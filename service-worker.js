@@ -1,5 +1,5 @@
-const CACHE='content-center-v5-20260919';
-const CORE=['./','./index.html','./app.css?v=20260919-management5','./app.js?v=20260919-management5','./approval.html','./manifest.webmanifest','./icon.svg'];
+const CACHE='content-center-v6-20260919b';
+const CORE=['./','./index.html','./app.css?v=20260919-management6','./app.js?v=20260919-management6','./enhancements-v6.css?v=20260919-v6','./enhancements-v6.js?v=20260919-v6','./approval.html','./manifest.webmanifest?v=20260919-pwa6','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
