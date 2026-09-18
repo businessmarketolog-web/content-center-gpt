@@ -3,20 +3,99 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="theme-color" content="#06161b" />
+<meta name="theme-color" content="#06171b" />
 <title>Content Center</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.js"></script>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
+<div class="noise"></div>
 <div class="toast" id="toast"></div>
-<div class="auth on" id="authLayer"><div class="dialog"><div class="ey">Content Center</div><h2>Вход владельца</h2><p>Введите код доступа владельца. Он работает на любом вашем браузере или устройстве и создаёт отдельную защищённую сессию.</p><div class="form"><input class="input" id="setupCode" type="password" placeholder="Setup‑код"><button class="primary" id="claimBtn">Войти в кабинет</button></div><div class="warning" style="margin-top:12px">Код не хранится в GitHub и используется только для подтверждения доступа владельца.</div></div></div>
+
+<div class="auth on" id="authLayer">
+  <div class="auth-orb orb-a"></div><div class="auth-orb orb-b"></div>
+  <div class="dialog auth-dialog">
+    <div class="ey">CONTENT CENTER / OWNER ACCESS</div>
+    <h2>Вход владельца</h2>
+    <p>Введите код доступа владельца. Он работает на любом вашем браузере или устройстве и создаёт отдельную защищённую сессию.</p>
+    <div class="form">
+      <input class="input input-xl" id="setupCode" type="password" autocomplete="current-password" placeholder="Код доступа владельца">
+      <button class="primary primary-xl" id="claimBtn">Войти в кабинет</button>
+    </div>
+    <div class="security-note">Код не хранится в GitHub и используется только для подтверждения доступа владельца.</div>
+  </div>
+</div>
+
 <div class="app">
-<aside class="side"><div class="brand"><div class="mark"></div><span>CONTENT CENTER</span></div><div class="menu" id="menu"></div><div class="sync"><b>ChatGPT sync <span class="dot">●</span></b><small>Supabase хранит данные. Composio отвечает за публикации.</small></div></aside>
-<main>
-<div class="top"><div><div class="ey" id="crumb">Контент‑центр</div><h1 id="title">Главная</h1></div><div class="actions"><select class="select" id="client"></select><button class="ghost" id="logoutBtn">Выйти</button><button class="primary" id="addBtn">+ Материал</button></div></div>
-<section class="view on" id="dashboard"></section><section class="view" id="plan"></section><section class="view" id="production"></section><section class="view" id="publishing"></section><section class="view" id="integrations"></section>
-</main></div>
-<div class="modal" id="contentModal"><div class="dialog"><h2>Новый материал</h2><p>Запись создаётся только внутри выбранного клиента.</p><div class="form"><input class="input" id="fTitle" placeholder="Название"><div class="cols"><select class="input" id="fFormat"><option>Reels</option><option>Stories</option><option>Carousel</option><option>Post</option></select><select class="input" id="fChannel"><option>Instagram</option><option>Telegram</option></select></div><div class="cols"><select class="input" id="fStatus"><option value="draft">Черновик</option><option value="production">В работе</option><option value="review">Согласование</option><option value="approved">Одобрено</option></select><input class="input" id="fDate" type="datetime-local"></div><textarea class="textarea" id="fCaption" placeholder="Подпись / текст публикации"></textarea><textarea class="textarea" id="fMedia" placeholder="Media URL — по одному на строку. Для Instagram URL должен быть публичным HTTPS"></textarea></div><div class="dialog-actions"><button class="ghost" id="cancelAdd">Отмена</button><button class="primary" id="saveAdd">Сохранить</button></div></div></div>
+  <aside class="side">
+    <div class="brand"><div class="mark"></div><div><span>CONTENT</span><small>CENTER</small></div></div>
+    <div class="workspace-label">WORKSPACE</div>
+    <div class="menu" id="menu"></div>
+    <div class="side-footer">
+      <div class="sync"><span class="sync-pulse"></span><div><b>ChatGPT sync</b><small>Supabase + Composio</small></div></div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="top">
+      <div class="top-title">
+        <div class="ey" id="crumb">Контент‑центр</div>
+        <h1 id="title">Главная</h1>
+      </div>
+      <div class="actions">
+        <button class="search-trigger" id="globalSearchBtn"><span>⌕</span><span class="search-label">Найти контент</span><kbd>Ctrl K</kbd></button>
+        <select class="select" id="client"></select>
+        <button class="icon-btn" id="logoutBtn" title="Выйти">↗</button>
+        <button class="primary" id="addBtn">＋ Материал</button>
+      </div>
+    </div>
+
+    <section class="view on" id="dashboard"></section>
+    <section class="view" id="calendar"></section>
+    <section class="view" id="approvals"></section>
+    <section class="view" id="production"></section>
+    <section class="view" id="publishing"></section>
+    <section class="view" id="library"></section>
+    <section class="view" id="integrations"></section>
+  </main>
+</div>
+
+<div class="modal" id="contentModal">
+  <div class="dialog">
+    <div class="dialog-head"><div><div class="ey">NEW CONTENT</div><h2>Новый материал</h2></div><button class="xbtn" id="cancelAdd">×</button></div>
+    <p>Запись создаётся только внутри выбранного клиента.</p>
+    <div class="form">
+      <label>Заголовок<input class="input" id="fTitle" placeholder="Например: 5 причин выбрать отель"></label>
+      <div class="cols">
+        <label>Формат<select class="input" id="fFormat"><option>Reels</option><option>Stories</option><option>Carousel</option><option>Post</option></select></label>
+        <label>Канал<select class="input" id="fChannel"><option>Instagram</option><option>Telegram</option></select></label>
+      </div>
+      <div class="cols">
+        <label>Статус<select class="input" id="fStatus"><option value="draft">Черновик</option><option value="production">В работе</option><option value="review">Согласование</option><option value="approved">Одобрено</option></select></label>
+        <label>Дата<input class="input" id="fDate" type="datetime-local"></label>
+      </div>
+      <label>Текст<textarea class="textarea" id="fCaption" placeholder="Текст публикации"></textarea></label>
+      <label>Media URL<textarea class="textarea compact" id="fMedia" placeholder="По одному публичному HTTPS URL на строку"></textarea></label>
+    </div>
+    <div class="dialog-actions"><button class="ghost" id="cancelAdd2">Отмена</button><button class="primary" id="saveAdd">Сохранить</button></div>
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="contentDrawer">
+  <div class="drawer-head">
+    <div><div class="ey">CONTENT DETAILS</div><h2 id="dHeading">Материал</h2></div>
+    <button class="xbtn" id="drawerClose">×</button>
+  </div>
+  <div id="drawerBody"></div>
+</aside>
+
+<div class="palette" id="palette">
+  <div class="palette-box">
+    <div class="palette-search"><span>⌕</span><input id="paletteInput" placeholder="Найти материал, формат или канал…"><kbd>ESC</kbd></div>
+    <div class="palette-results" id="paletteResults"></div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body></html>
