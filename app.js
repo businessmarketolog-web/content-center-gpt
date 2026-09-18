@@ -17,7 +17,7 @@ const STATUS={
   approved:'Одобрено',scheduled:'Запланировано',published:'Опубликовано',failed:'Ошибка'
 };
 let state={
-  session:null,clients:[],clientId:null,content:[],integrations:[],assets:[],analytics:[],
+  session:null,clients:[],clientId:null,content:[],integrations:[],assets:[],analytics:[],syncEvents:[],
   view:'dashboard',selectedId:null,filters:{q:'',status:'all',channel:'all'},calendarCursor:new Date(new Date().getFullYear(),new Date().getMonth(),1),calendarChannel:'all',calendarSelected:null,pendingFiles:[]
 };
 
@@ -105,11 +105,12 @@ async function loadClients(){
   renderNav();show(state.view);
 }
 async function loadClientData(){
-  const [c,i,a,n]=await Promise.all([
+  const [c,i,a,n,s]=await Promise.all([
     sb.from('content_items').select('*').eq('client_id',state.clientId).order('scheduled_at',{ascending:true,nullsFirst:false}),
     sb.from('client_integrations').select('*').eq('client_id',state.clientId).order('channel'),
     sb.from('assets').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false}),
-    sb.from('analytics_daily').select('*').eq('client_id',state.clientId).order('day',{ascending:false}).limit(30)
+    sb.from('analytics_daily').select('*').eq('client_id',state.clientId).order('day',{ascending:false}).limit(30),
+    sb.from('content_sync_events').select('id,event_type,source,created_at,delivered_at,payload').eq('client_id',state.clientId).order('created_at',{ascending:false}).limit(50)
   ]);
   if(c.error)return toast(c.error.message,true);
   if(i.error)return toast(i.error.message,true);
@@ -117,6 +118,7 @@ async function loadClientData(){
   state.integrations=i.data||[];
   state.assets=a.error?[]:(a.data||[]);
   state.analytics=n.error?[]:(n.data||[]);
+  state.syncEvents=s.error?[]:(s.data||[]);
   renderAll();
 }
 function renderAll(){
@@ -414,6 +416,15 @@ function renderIntegrations(){
       <div class="int"><div style="display:flex;gap:11px;align-items:center"><div class="logo">TG</div><div><b>Telegram</b><div class="sub">${esc(tg?.external_target||'канал не указан')}</div></div></div><span class="${tg?.enabled?'ok':'need'}">${tg?.enabled?'● бот подключён':'● нужно подключить'}</span></div>
     </div>
     <div class="card" style="margin-top:12px"><div class="ey">TELEGRAM TARGET</div><div class="section" style="margin-top:6px"><div><h2>Канал публикации</h2><p>Укажите @channelusername или числовой chat_id.</p></div></div><div class="cols"><input class="input" id="tgTarget" value="${esc(tg?.external_target||'')}" placeholder="@channelusername или -100..."><button class="primary" onclick="saveTelegramTarget()">Сохранить</button></div></div>
+    <div class="card" style="margin-top:12px">
+      <div class="ey">CHATGPT SYNC</div>
+      ${(()=>{
+        const pending=state.syncEvents.filter(e=>e.source==='content_center'&&!e.delivered_at).length;
+        const delivered=state.syncEvents.filter(e=>e.delivered_at).sort((a,b)=>new Date(b.delivered_at)-new Date(a.delivered_at))[0];
+        return `<div class="section" style="margin-top:6px"><div><h2>Двусторонняя синхронизация</h2><p>Изменения из Content Center попадают в журнал и проверяются ChatGPT автоматически.</p></div><span class="${pending?'need':'ok'}">${pending?`● ждёт передачи: ${pending}`:'● синхронизация активна'}</span></div>
+        <div class="sub">${delivered?`Последняя передача: ${fmtDate(delivered.delivered_at)}`:'Переданных изменений пока нет'} · автоматическая проверка — раз в час.</div>`;
+      })()}
+    </div>
     <div class="card" style="margin-top:12px"><div class="ey">SERVER CONNECTION</div><p class="sub">Публикация из кабинета проходит через Supabase Edge Function → Composio → соцсеть. Секреты не хранятся во фронтенде.</p><button class="ghost" onclick="copyConnectCommand()">Скопировать команду подключения</button></div>`;
 }
 
