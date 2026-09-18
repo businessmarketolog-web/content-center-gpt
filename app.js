@@ -1488,3 +1488,419 @@ function startRealtime(){
     .subscribe()
 }
 
+
+
+/* COLLABORATION PACKAGE V4 */
+state.approvalLinks=state.approvalLinks||[];
+state.notificationSettings=state.notificationSettings||null;
+state.notificationOutbox=state.notificationOutbox||[];
+state.bulkSelected=state.bulkSelected||new Set();
+
+const BRIEF_FIELDS=[
+  ['goal','Цель контента','Например: повысить доверие / получить сохранения'],
+  ['audience','Целевая аудитория','Кому адресован материал'],
+  ['offer','Оффер / главный посыл','Что именно предлагаем или хотим донести'],
+  ['key_points','Обязательные тезисы','Что обязательно должно прозвучать'],
+  ['references','Референсы','Ссылки, примеры, ориентиры'],
+  ['cta','CTA','Какое действие ожидаем'],
+  ['shoot_deadline','Дедлайн съёмки','Дата / комментарий'],
+  ['producer','Кто снимает / готовит','Ответственный за производство'],
+  ['editor','Кто монтирует / оформляет','Ответственный за финальную сборку']
+];
+
+function defaultChecklist(x){
+  if(x.channel==='Telegram')return[
+    {id:'text',label:'Финальный текст готов',done:false,required:true},
+    {id:'proof',label:'Проверены факты и опечатки',done:false,required:true},
+    {id:'links',label:'Проверены ссылки и CTA',done:false,required:true},
+    {id:'approval',label:'Согласование получено',done:false,required:true}
+  ];
+  const a=[
+    {id:'brief',label:'Бриф заполнен',done:false,required:true},
+    {id:'script',label:'Сценарий / структура готовы',done:false,required:true},
+    {id:'media',label:'Съёмка / исходники готовы',done:false,required:true},
+    {id:'edit',label:'Монтаж / дизайн готовы',done:false,required:true},
+    {id:'caption',label:'Текст публикации готов',done:false,required:true},
+    {id:'approval',label:'Согласование получено',done:false,required:true}
+  ];
+  if(String(x.format||'').toLowerCase().includes('reel'))a.splice(4,0,{id:'subtitles',label:'Субтитры проверены',done:false,required:true});
+  if(!String(x.format||'').toLowerCase().includes('stories'))a.splice(a.length-1,0,{id:'cover',label:'Обложка готова',done:false,required:false});
+  return a
+}
+function checklistFor(x){return Array.isArray(x?.checklist)&&x.checklist.length?x.checklist:defaultChecklist(x)}
+function checklistStats(x){const c=checklistFor(x),d=c.filter(i=>i.done).length;return{done:d,total:c.length,requiredOpen:c.filter(i=>i.required!==false&&!i.done)}}
+function approvalStatusLabel(v){return{not_sent:'Не отправлено',sent:'Отправлено клиенту',viewed:'Клиент открыл',approved:'Клиент одобрил',changes:'Нужны правки'}[v]||v||'Не отправлено'}
+function approvalStatusClass(v){return v==='approved'?'ok':v==='changes'?'bad':v==='viewed'?'info':''}
+
+const __v4ReadinessBase=readinessIssues;
+readinessIssues=function(x){
+  const out=__v4ReadinessBase(x);
+  const open=checklistFor(x).filter(i=>i.required!==false&&!i.done);
+  if(open.length)out.push('Чек-лист производства не завершён: '+open.length);
+  return [...new Set(out)]
+};
+
+function briefDataFromDrawer(){const out={};BRIEF_FIELDS.forEach(([k])=>{const el=$('bd_'+k);if(el&&el.value.trim())out[k]=el.value.trim()});return out}
+function briefFormHtml(x){
+  const b=x.brief_data||{};
+  return `<details class="brief-section" open><summary><span><b>Контент-бриф</b><small>Цель, аудитория, тезисы и производство</small></span><span>＋</span></summary>
+    <div class="brief-grid">${BRIEF_FIELDS.map(([k,l,p])=>`<label>${l}${['key_points','references'].includes(k)?`<textarea class="textarea compact" id="bd_${k}" placeholder="${p}">${esc(b[k]||'')}</textarea>`:`<input class="input" id="bd_${k}" placeholder="${p}" value="${esc(b[k]||'')}">`}</label>`).join('')}</div>
+  </details>`
+}
+function checklistHtml(x){
+  const list=checklistFor(x),s=checklistStats(x);
+  return `<section class="checklist-section"><div class="collab-head"><div><div class="ey">PRODUCTION CHECKLIST</div><h3>Чек-лист производства</h3></div><span class="badge">${s.done}/${s.total}</span></div>
+    <div class="checklist-progress"><i style="width:${s.total?Math.round(s.done/s.total*100):0}%"></i></div>
+    <div class="checklist-list">${list.map((i,n)=>`<label class="check-item ${i.done?'done':''}"><input type="checkbox" ${i.done?'checked':''} onchange="toggleChecklist('${x.id}',${n},this.checked)"><span>${esc(i.label)}${i.required===false?' <small>необязательно</small>':''}</span></label>`).join('')}</div>
+    <div class="checklist-add"><input class="input" id="newCheckItem" placeholder="Добавить свой пункт"><button class="ghost" onclick="addChecklistItem('${x.id}')">＋ Добавить</button></div>
+  </section>`
+}
+async function toggleChecklist(id,index,done){
+  const x=state.content.find(v=>v.id===id);if(!x)return;
+  const list=checklistFor(x).map((i,n)=>n===index?{...i,done}:i);
+  const r=await sb.from('content_items').update({checklist:list}).eq('id',id);if(r.error)return toast(r.error.message,true);
+  x.checklist=list;openDrawer(id)
+}
+async function addChecklistItem(id){
+  const label=$('newCheckItem')?.value.trim();if(!label)return;
+  const x=state.content.find(v=>v.id===id);if(!x)return;
+  const list=checklistFor(x).concat({id:'custom_'+Date.now(),label,done:false,required:false});
+  const r=await sb.from('content_items').update({checklist:list}).eq('id',id);if(r.error)return toast(r.error.message,true);
+  x.checklist=list;openDrawer(id)
+}
+
+function approvalLinksFor(id){return state.approvalLinks.filter(x=>x.content_item_id===id).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))}
+function approvalBlockHtml(x){
+  const latest=approvalLinksFor(x.id)[0],st=x.client_approval_status||'not_sent';
+  return `<section class="approval-block"><div class="collab-head"><div><div class="ey">CLIENT APPROVAL</div><h3>Согласование с клиентом</h3></div><span class="approval-status ${approvalStatusClass(st)}">${esc(approvalStatusLabel(st))}</span></div>
+    ${x.client_feedback?`<div class="client-feedback"><b>Комментарий клиента</b><p>${esc(x.client_feedback)}</p></div>`:''}
+    <div class="approval-actions"><button class="primary" onclick="createClientApprovalLink('${x.id}')">🔗 Создать ссылку</button>${latest&&!latest.revoked_at?`<button class="ghost" onclick="copyExistingApprovalLink('${latest.id}')">Новая ссылка</button>`:''}</div>
+    <p class="approval-note">Клиент увидит только этот материал и сможет одобрить его или отправить правки без входа в Content Center.</p>
+  </section>`
+}
+async function createClientApprovalLink(id){
+  const s=(await sb.auth.getSession()).data.session;if(!s)return toast('Нужно войти заново',true);
+  toast('Создаю ссылку…');
+  const r=await fetch(SUPABASE_URL+'/functions/v1/create-approval-link',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+s.access_token},body:JSON.stringify({content_item_id:id})});
+  const b=await r.json();if(!r.ok)return toast(b.error||'Не удалось создать ссылку',true);
+  try{await navigator.clipboard.writeText(b.url);toast('Ссылка для клиента скопирована')}catch{
+    openP2Modal('Ссылка для клиента','CLIENT APPROVAL',`<div class="feature-form"><input class="input" value="${esc(b.url)}" readonly><p>Скопируйте ссылку и отправьте клиенту.</p></div>`)
+  }
+  await loadClientData();openDrawer(id)
+}
+async function copyExistingApprovalLink(linkId){
+  const link=state.approvalLinks.find(x=>x.id===linkId);if(link)await createClientApprovalLink(link.content_item_id)
+}
+
+function augmentDrawerV4(id){
+  const x=state.content.find(v=>v.id===id);if(!x)return;
+  const form=$('drawerBody')?.querySelector('.form'),draft=$('drawerDraftState');
+  if(form&&!$('briefV4'))form.insertAdjacentHTML('afterend',`<div id="briefV4">${briefFormHtml(x)}</div>`);
+  if(draft&&!$('checklistV4'))draft.insertAdjacentHTML('afterend',`<div id="checklistV4">${checklistHtml(x)}${approvalBlockHtml(x)}</div>`);
+  BRIEF_FIELDS.forEach(([k])=>{$('bd_'+k)?.addEventListener('input',()=>saveItemLocalDraft(id))})
+}
+const __v4OpenDrawerBase=openDrawer;
+openDrawer=function(id){__v4OpenDrawerBase(id);augmentDrawerV4(id)};
+
+async function saveDrawer(){
+  const id=state.selectedId;if(!id)return;const media=$('dMedia').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  const x=state.content.find(v=>v.id===id);
+  const payload={
+    title:$('dTitle').value.trim(),brief:$('dBrief').value.trim(),caption:$('dCaption').value.trim(),status:$('dStatus').value,
+    format:$('dFormat').value,channel:$('dChannel').value,scheduled_at:$('dDate').value?new Date($('dDate').value).toISOString():null,
+    assignee:$('dAssignee').value.trim()||null,due_at:$('dDue').value?new Date($('dDue').value).toISOString():null,
+    media_urls:media,tags:tagsArray($('dTags')?.value),brief_data:briefDataFromDrawer(),checklist:checklistFor(x)
+  };
+  if(!payload.title)return toast('Заголовок не может быть пустым',true);
+  if(['approved','scheduled'].includes(payload.status)){
+    const issues=readinessIssues({...x,...payload});
+    if(issues.length){openP2Modal('Материал не готов','READINESS CHECK',`<div class="readiness-card"><p>Перед переводом в готовый статус закройте обязательные пункты:</p><div class="readiness-list">${issues.map(i=>`<div>• ${esc(i)}</div>`).join('')}</div></div>`);return}
+  }
+  const r=await sb.from('content_items').update(payload).eq('id',id);if(r.error)return toast(r.error.message,true);
+  clearItemDraft(id);toast('Материал сохранён');await loadClientData();openDrawer(id)
+}
+
+function bulkItems(){return state.content.filter(x=>!x.archived_at)}
+function openBulkActions(){
+  state.bulkSelected=new Set();
+  openP2Modal('Массовые действия','BULK ACTIONS',`
+    <div class="bulk-toolbar"><button class="ghost" onclick="bulkSelectAll()">Выбрать все</button><span id="bulkCount">0 выбрано</span></div>
+    <div class="bulk-list">${bulkItems().map(x=>`<label class="bulk-row"><input type="checkbox" onchange="toggleBulk('${x.id}',this.checked)"><div><b>${esc(x.title)}</b><small>${esc(x.format)} · ${esc(x.channel)} · ${esc(STATUS[x.status]||x.status)}</small></div></label>`).join('')}</div>
+    <div class="bulk-controls">
+      <label>Статус<select class="input" id="bulkStatus"><option value="">Не менять</option>${Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join('')}</select></label>
+      <label>Канал<select class="input" id="bulkChannel"><option value="">Не менять</option><option>Instagram</option><option>Telegram</option></select></label>
+      <label>Ответственный<input class="input" id="bulkAssignee" placeholder="Оставьте пустым, чтобы не менять"></label>
+      <label>Добавить тег<input class="input" id="bulkTag" placeholder="Например: акция"></label>
+      <label class="bulk-archive"><input type="checkbox" id="bulkArchive"> Переместить выбранные в архив</label>
+      <button class="primary" onclick="applyBulkActions()">Применить</button>
+    </div>`)
+}
+function toggleBulk(id,on){on?state.bulkSelected.add(id):state.bulkSelected.delete(id);if($('bulkCount'))$('bulkCount').textContent=state.bulkSelected.size+' выбрано'}
+function bulkSelectAll(){state.bulkSelected=new Set(bulkItems().map(x=>x.id));document.querySelectorAll('.bulk-row input').forEach(x=>x.checked=true);if($('bulkCount'))$('bulkCount').textContent=state.bulkSelected.size+' выбрано'}
+async function applyBulkActions(){
+  const ids=[...state.bulkSelected];if(!ids.length)return toast('Выберите материалы',true);
+  const status=$('bulkStatus')?.value||'',channel=$('bulkChannel')?.value||'',assignee=$('bulkAssignee')?.value.trim(),tag=$('bulkTag')?.value.trim(),archive=$('bulkArchive')?.checked;
+  if(status&&['approved','scheduled'].includes(status)){
+    const bad=ids.map(id=>state.content.find(x=>x.id===id)).filter(Boolean).filter(x=>readinessIssues({...x,status}).length);
+    if(bad.length)return openP2Modal('Не все материалы готовы','READINESS CHECK',`<div class="readiness-list">${bad.map(x=>`<div>• ${esc(x.title)} — ${readinessIssues({...x,status}).join(', ')}</div>`).join('')}</div>`)
+  }
+  const simple={};if(status)simple.status=status;if(channel)simple.channel=channel;if(assignee)simple.assignee=assignee;if(archive){simple.archived_at=new Date().toISOString();simple.archived_by=state.session?.user?.id||null}
+  if(Object.keys(simple).length){const r=await sb.from('content_items').update(simple).in('id',ids);if(r.error)return toast(r.error.message,true)}
+  if(tag){
+    for(const id of ids){const x=state.content.find(v=>v.id===id);if(!x)continue;const tags=[...new Set([...(x.tags||[]),tag])];const r=await sb.from('content_items').update({tags}).eq('id',id);if(r.error)return toast(r.error.message,true)}
+  }
+  closeP2Modal();toast('Массовое действие выполнено');await loadClientData()
+}
+
+function telegramIntegration(){return state.integrations.find(x=>x.channel==='Telegram')}
+function telegramEventOptions(){return[
+  ['review','Материал ждёт согласования'],
+  ['deadline_today','Дедлайн сегодня'],
+  ['publish_failed','Ошибка публикации'],
+  ['client_comment','Комментарий / правки клиента'],
+  ['client_decision','Клиент одобрил материал']
+]}
+function openTelegramNotifications(){
+  const s=state.notificationSettings||{},i=telegramIntegration(),events=Array.isArray(s.events)?s.events:['review','deadline_today','publish_failed','client_comment','client_decision'];
+  openP2Modal('Telegram-уведомления','NOTIFICATIONS',`<div class="telegram-settings">
+    <div class="integration-state ${i?.enabled?'ok':'bad'}"><b>${i?.enabled?'Telegram подключён':'Telegram не подключён для этого клиента'}</b><small>${i?.connected_account_id?esc(i.connected_account_id):'Сначала подключите Telegram во вкладке «Интеграции»'}</small></div>
+    <label class="switch-row"><input type="checkbox" id="tgNotifyEnabled" ${s.telegram_enabled?'checked':''}><span>Включить рабочие уведомления</span></label>
+    <label>Chat ID<input class="input" id="tgNotifyChat" value="${esc(s.telegram_chat_id||i?.external_target||i?.metadata?.chat_id||'')}" placeholder="Например: -1001234567890"></label>
+    <div class="event-settings">${telegramEventOptions().map(([k,l])=>`<label><input type="checkbox" class="tg-event" value="${k}" ${events.includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
+    <div class="telegram-actions"><button class="primary" onclick="saveTelegramNotifications()">Сохранить</button><button class="ghost" onclick="testTelegramNotification()">Отправить тест</button><button class="ghost" onclick="dispatchTelegramNotifications(true)">Отправить накопившиеся</button></div>
+    <div class="sub">События сохраняются в очереди даже если Telegram временно недоступен.</div>
+  </div>`)
+}
+async function saveTelegramNotifications(){
+  const events=[...document.querySelectorAll('.tg-event:checked')].map(x=>x.value);
+  const row={client_id:state.clientId,telegram_enabled:Boolean($('tgNotifyEnabled')?.checked),telegram_chat_id:$('tgNotifyChat')?.value.trim()||null,events,updated_by:state.session?.user?.id||null};
+  const r=await sb.from('notification_settings').upsert(row,{onConflict:'client_id'});if(r.error)return toast(r.error.message,true);
+  toast('Настройки уведомлений сохранены');await loadClientData();openTelegramNotifications()
+}
+async function callNotifyEdge(action){
+  const s=(await sb.auth.getSession()).data.session;if(!s)throw new Error('Нужно войти заново');
+  const r=await fetch(SUPABASE_URL+'/functions/v1/dispatch-telegram-notifications',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+s.access_token},body:JSON.stringify({client_id:state.clientId,action})});
+  const b=await r.json();if(!r.ok)throw new Error(b.error||'Ошибка Telegram');return b
+}
+async function testTelegramNotification(){try{await callNotifyEdge('test');toast('Тестовое уведомление отправлено')}catch(e){const m=String(e.message||e);toast(m==='COMPOSIO_API_KEY_not_configured'?'Для отправки нужно добавить COMPOSIO_API_KEY в backend':m,true)}}
+async function dispatchTelegramNotifications(showResult=false){try{const b=await callNotifyEdge('dispatch');if(showResult)toast(`Отправлено: ${b.sent||0}${b.failed?` · ошибок: ${b.failed}`:''}`)}catch(e){if(showResult)toast(String(e.message||e),true)}}
+function maybeDispatchTelegram(){
+  if(!state.notificationSettings?.telegram_enabled)return;
+  const k='cc-last-tg-dispatch:'+state.clientId,last=Number(localStorage.getItem(k)||0);if(Date.now()-last<300000)return;
+  localStorage.setItem(k,String(Date.now()));dispatchTelegramNotifications(false)
+}
+
+function injectV4Tools(){
+  const prod=$('production');
+  if(prod&&!$('bulkActionsBtn')){const sec=prod.querySelector('.section');if(sec){const b=document.createElement('button');b.id='bulkActionsBtn';b.className='chip';b.textContent='☑ Массовые действия';b.onclick=openBulkActions;sec.appendChild(b)}}
+  const integrations=$('integrations');
+  if(integrations&&!$('tgNotificationCard'))integrations.insertAdjacentHTML('afterbegin',`<div class="card tg-notify-card" id="tgNotificationCard"><div><div class="ey">TEAM NOTIFICATIONS</div><h2>Telegram-уведомления</h2><p>Согласования, дедлайны, ошибки публикации и комментарии клиента.</p></div><button class="primary" onclick="openTelegramNotifications()">Настроить</button></div>`);
+  const dashboard=$('dashboard');
+  if(dashboard&&!$('bulkQuickV4')){const q=dashboard.querySelector('.quick-grid');if(q)q.insertAdjacentHTML('beforeend',`<button class="quick" id="bulkQuickV4" onclick="openBulkActions()"><strong>☑ Массово</strong><span>Статусы, теги, ответственный, архив</span></button><button class="quick" onclick="openTelegramNotifications()"><strong>🔔 Telegram</strong><span>Рабочие уведомления команды</span></button>`)}
+}
+
+const __v4LoadClientDataBase=loadClientData;
+loadClientData=async function(){
+  await __v4LoadClientDataBase();
+  const [al,ns,no]=await Promise.all([
+    sb.from('client_approval_links').select('id,client_id,content_item_id,expires_at,revoked_at,created_at,last_opened_at,decision,decision_comment,decided_at').eq('client_id',state.clientId).order('created_at',{ascending:false}).limit(100),
+    sb.from('notification_settings').select('*').eq('client_id',state.clientId).maybeSingle(),
+    sb.from('notification_outbox').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false}).limit(50)
+  ]);
+  state.approvalLinks=al.error?[]:(al.data||[]);
+  state.notificationSettings=ns.error?null:(ns.data||null);
+  state.notificationOutbox=no.error?[]:(no.data||[]);
+  injectV4Tools();maybeDispatchTelegram()
+};
+
+const __v4RenderAllBase=renderAll;
+renderAll=function(){__v4RenderAllBase();injectV4Tools()};
+
+function startRealtime(){
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null}
+  if(!state.session||!state.clientId)return;
+  realtimeChannel=sb.channel('content-center-'+state.clientId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_items',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_sync_events',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_comments',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'publish_queue',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_templates',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_links',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'saved_views',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'recurring_content_rules',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'client_approval_links',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'notification_settings',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'notification_outbox',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .subscribe()
+}
+
+/* MANAGEMENT PACKAGE V5 */
+state.campaigns=state.campaigns||[];
+state.metrics=state.metrics||[];
+state.mediaVersions=state.mediaVersions||[];
+state.backups=state.backups||[];
+
+function metricFor(id){return state.metrics.find(x=>x.content_item_id===id)||null}
+function mediaVersionsFor(id){return state.mediaVersions.filter(x=>x.content_item_id===id).sort((a,b)=>b.version_number-a.version_number)}
+function campaignFor(id){return state.campaigns.find(x=>x.id===id)}
+function numberFmt(v){return new Intl.NumberFormat('ru-RU').format(Number(v||0))}
+function engagementScore(m){return Number(m?.likes||0)+Number(m?.comments||0)*2+Number(m?.saves||0)*3+Number(m?.shares||0)*3+Number(m?.leads||0)*5}
+
+function managementDrawerHtml(x){
+  const m=metricFor(x.id),vers=mediaVersionsFor(x.id);
+  return `<section class="management-block"><div class="collab-head"><div><div class="ey">CAMPAIGN</div><h3>Контент-кампания</h3></div><button class="mini-btn" onclick="openCampaigns()">Управлять</button></div>
+    <select class="input" onchange="setContentCampaign('${x.id}',this.value)"><option value="">Без кампании</option>${state.campaigns.map(c=>`<option value="${c.id}" ${x.campaign_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+  </section>
+  <section class="management-block"><div class="collab-head"><div><div class="ey">CONTENT ANALYTICS</div><h3>Результаты публикации</h3></div><span class="badge">${m?'обновлено':'нет данных'}</span></div>
+    <div class="metrics-grid">${[['views','Просмотры'],['reach','Охват'],['likes','Лайки'],['comments','Комментарии'],['saves','Сохранения'],['shares','Репосты'],['clicks','Переходы'],['leads','Заявки']].map(([k,l])=>`<label>${l}<input class="input" id="mx_${k}" type="number" min="0" value="${Number(m?.[k]||0)}"></label>`).join('')}</div>
+    <button class="ghost full-btn" onclick="saveContentMetrics('${x.id}')">Сохранить аналитику</button>
+  </section>
+  <section class="management-block"><div class="collab-head"><div><div class="ey">MEDIA VERSIONS</div><h3>Версии медиа</h3></div><span class="badge">${vers.length}</span></div>
+    <div class="media-version-list">${vers.map(v=>`<div class="media-version-row"><div><b>v${v.version_number}${v.is_final?' · FINAL':''}</b><small>${fmtDate(v.created_at)} · ${Array.isArray(v.media_urls)?v.media_urls.length:0} файлов</small></div><div class="media-version-actions"><button class="mini-btn" onclick="restoreMediaVersion('${v.id}','${x.id}')">Восстановить</button><button class="mini-btn ${v.is_final?'accent':''}" onclick="markMediaVersionFinal('${v.id}','${x.id}')">FINAL</button></div></div>`).join('')||'<div class="collab-empty">Версии появятся после добавления или замены медиа.</div>'}</div>
+  </section>`
+}
+const __v5OpenDrawerBase=openDrawer;
+openDrawer=function(id){
+  __v5OpenDrawerBase(id);
+  const x=state.content.find(v=>v.id===id),comments=$('drawerBody')?.querySelector('.collab-section');
+  if(x&&comments&&!$('managementV5'))comments.insertAdjacentHTML('beforebegin',`<div id="managementV5">${managementDrawerHtml(x)}</div>`)
+}
+async function setContentCampaign(id,campaign_id){const r=await sb.from('content_items').update({campaign_id:campaign_id||null}).eq('id',id);if(r.error)return toast(r.error.message,true);const x=state.content.find(v=>v.id===id);if(x)x.campaign_id=campaign_id||null;toast('Кампания обновлена')}
+async function saveContentMetrics(id){
+  const row={client_id:state.clientId,content_item_id:id,updated_by:state.session?.user?.id||null};
+  for(const k of ['views','reach','likes','comments','saves','shares','clicks','leads'])row[k]=Math.max(0,Number($('mx_'+k)?.value||0));
+  const r=await sb.from('content_metrics').upsert(row,{onConflict:'content_item_id'});if(r.error)return toast(r.error.message,true);
+  toast('Аналитика сохранена');await loadClientData();openDrawer(id)
+}
+async function restoreMediaVersion(versionId,itemId){
+  const v=state.mediaVersions.find(x=>x.id===versionId);if(!v)return;
+  if(!confirm('Восстановить эту версию медиа? Текущая версия сохранится в истории.'))return;
+  const r=await sb.from('content_items').update({media_urls:v.media_urls}).eq('id',itemId);if(r.error)return toast(r.error.message,true);
+  toast('Версия медиа восстановлена');await loadClientData();openDrawer(itemId)
+}
+async function markMediaVersionFinal(versionId,itemId){
+  await sb.from('content_media_versions').update({is_final:false}).eq('content_item_id',itemId);
+  const r=await sb.from('content_media_versions').update({is_final:true}).eq('id',versionId);if(r.error)return toast(r.error.message,true);
+  toast('Финальная версия отмечена');await loadClientData();openDrawer(itemId)
+}
+
+function openCampaigns(){
+  openP2Modal('Контент-кампании','CAMPAIGNS',`<div class="campaign-list">${state.campaigns.map(c=>`<div class="campaign-row"><div><b>${esc(c.name)}</b><small>${esc(c.objective||'Без цели')} · ${c.period_start||'—'} → ${c.period_end||'—'} · ${esc(c.status)}</small></div><span class="badge">${state.content.filter(x=>x.campaign_id===c.id).length} материалов</span></div>`).join('')||'<div class="collab-empty">Кампаний пока нет</div>'}</div>
+    <details class="new-view" open><summary>＋ Новая кампания</summary><div class="feature-form">
+      <label>Название<input class="input" id="campName" placeholder="Например: ОАЭ — школьные каникулы"></label>
+      <label>Цель<textarea class="textarea compact" id="campGoal" placeholder="Доверие, заявки, охват, продажи…"></textarea></label>
+      <div class="cols"><label>Начало<input class="input" id="campStart" type="date"></label><label>Конец<input class="input" id="campEnd" type="date"></label></div>
+      <div class="cols"><label>Бюджет<input class="input" id="campBudget" type="number" min="0" step="100"></label><label>Статус<select class="input" id="campStatus"><option value="planned">План</option><option value="active" selected>Активна</option><option value="paused">Пауза</option><option value="completed">Завершена</option></select></label></div>
+      <label>Заметки<textarea class="textarea compact" id="campNotes"></textarea></label>
+      <button class="primary" onclick="createCampaign()">Создать кампанию</button>
+    </div></details>`)
+}
+async function createCampaign(){
+  const name=$('campName')?.value.trim();if(!name)return toast('Введите название кампании',true);
+  const row={client_id:state.clientId,name,objective:$('campGoal')?.value.trim()||null,period_start:$('campStart')?.value||null,period_end:$('campEnd')?.value||null,budget:$('campBudget')?.value?Number($('campBudget').value):null,status:$('campStatus')?.value||'active',notes:$('campNotes')?.value.trim()||null};
+  const r=await sb.from('content_campaigns').insert(row);if(r.error)return toast(r.error.message,true);
+  toast('Кампания создана');await loadClientData();openCampaigns()
+}
+
+function openAnalyticsOverview(){
+  const rows=state.content.map(x=>({x,m:metricFor(x.id)})).filter(v=>v.m).sort((a,b)=>engagementScore(b.m)-engagementScore(a.m));
+  const totals=rows.reduce((a,v)=>{for(const k of ['views','reach','saves','shares','leads'])a[k]+=Number(v.m[k]||0);return a},{views:0,reach:0,saves:0,shares:0,leads:0});
+  const byFormat={};rows.forEach(({x,m})=>{const k=x.format||'Другое';byFormat[k]=byFormat[k]||{count:0,score:0,reach:0};byFormat[k].count++;byFormat[k].score+=engagementScore(m);byFormat[k].reach+=Number(m.reach||0)});
+  openP2Modal('Аналитика контента','CONTENT ANALYTICS',`<div class="analytics-kpis">${[['Просмотры',totals.views],['Охват',totals.reach],['Сохранения',totals.saves],['Репосты',totals.shares],['Заявки',totals.leads]].map(([l,v])=>`<div><b>${numberFmt(v)}</b><small>${l}</small></div>`).join('')}</div>
+    <div class="section"><div><h2>Лучшие материалы</h2><p>По вовлечению: лайки, комментарии, сохранения, репосты и заявки.</p></div></div>
+    <div class="analytics-list">${rows.slice(0,10).map(({x,m},i)=>`<button onclick="closeP2Modal();openDrawer('${x.id}')"><span>${i+1}</span><div><b>${esc(x.title)}</b><small>${esc(x.format)} · охват ${numberFmt(m.reach)} · сохранения ${numberFmt(m.saves)} · заявки ${numberFmt(m.leads)}</small></div><strong>${numberFmt(engagementScore(m))}</strong></button>`).join('')||'<div class="collab-empty">Добавьте показатели к опубликованным материалам.</div>'}</div>
+    <div class="section"><div><h2>По форматам</h2></div></div><div class="format-analytics">${Object.entries(byFormat).map(([k,v])=>`<div><b>${esc(k)}</b><span>${v.count} материалов · охват ${numberFmt(v.reach)} · score ${numberFmt(v.score)}</span></div>`).join('')}</div>`)
+}
+
+function openMonthlyReport(){
+  const now=new Date(),def=now.toISOString().slice(0,7);
+  openP2Modal('Отчёт клиенту','MONTHLY REPORT',`<div class="feature-form"><label>Месяц<input class="input" id="reportMonth" type="month" value="${def}"></label><p>Сформируется аккуратная версия для печати. На iPhone/macOS/Windows выберите «Сохранить как PDF».</p><button class="primary" onclick="generateMonthlyReport()">Сформировать отчёт / PDF</button></div>`)
+}
+function generateMonthlyReport(){
+  const month=$('reportMonth')?.value;if(!month)return;
+  const [y,m]=month.split('-').map(Number),start=new Date(y,m-1,1),end=new Date(y,m,1);
+  const published=state.content.filter(x=>x.published_at&&new Date(x.published_at)>=start&&new Date(x.published_at)<end);
+  const metrics=published.map(x=>({x,m:metricFor(x.id)})).filter(v=>v.m);
+  const total=metrics.reduce((a,v)=>{for(const k of ['views','reach','saves','shares','leads'])a[k]+=Number(v.m[k]||0);return a},{views:0,reach:0,saves:0,shares:0,leads:0});
+  const top=[...metrics].sort((a,b)=>engagementScore(b.m)-engagementScore(a.m)).slice(0,5);
+  const c=currentClient(),title=new Intl.DateTimeFormat('ru-RU',{month:'long',year:'numeric'}).format(start);
+  const w=window.open('','_blank');if(!w)return toast('Разрешите всплывающие окна для отчёта',true);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Отчёт ${esc(c?.name||'')}</title><style>body{font-family:Arial,sans-serif;color:#17252a;margin:40px}h1{font-size:30px;margin-bottom:4px}.muted{color:#687b82}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:24px 0}.kpis div{padding:16px;border:1px solid #d8e2e5;border-radius:12px}.kpis b{display:block;font-size:22px}.kpis small{color:#687b82}.row{padding:12px 0;border-bottom:1px solid #e5ecee}.row b{display:block}.row small{color:#687b82}@media print{body{margin:18mm}.no-print{display:none}}</style></head><body><h1>${esc(c?.name||'Content Center')}</h1><div class="muted">Отчёт за ${esc(title)}</div><div class="kpis">${[['Публикации',published.length],['Охват',total.reach],['Просмотры',total.views],['Сохранения',total.saves],['Заявки',total.leads]].map(([l,v])=>`<div><b>${numberFmt(v)}</b><small>${l}</small></div>`).join('')}</div><h2>Лучшие материалы</h2>${top.map(({x,m},i)=>`<div class="row"><b>${i+1}. ${esc(x.title)}</b><small>${esc(x.format)} · охват ${numberFmt(m.reach)} · сохранения ${numberFmt(m.saves)} · заявки ${numberFmt(m.leads)}</small></div>`).join('')||'<p>Нет аналитики за выбранный месяц.</p>'}<h2>Опубликовано</h2>${published.map(x=>`<div class="row"><b>${esc(x.title)}</b><small>${esc(x.format)} · ${esc(x.channel)} · ${new Date(x.published_at).toLocaleDateString('ru-RU')}</small></div>`).join('')||'<p>Публикаций нет.</p>'}<p class="muted">Сформировано в Content Center</p><script>setTimeout(()=>window.print(),450)<\/script></body></html>`);w.document.close();closeP2Modal()
+}
+
+async function backupEdge(action,extra={}){
+  const s=(await sb.auth.getSession()).data.session;if(!s)throw new Error('Нужно войти заново');
+  const r=await fetch(SUPABASE_URL+'/functions/v1/backup-control',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+s.access_token},body:JSON.stringify({client_id:state.clientId,action,...extra})});
+  const b=await r.json();if(!r.ok)throw new Error(b.error||'Ошибка резервного копирования');return b
+}
+async function openBackups(){
+  try{
+    const b=await backupEdge('list');state.backups=b.backups||[];
+    openP2Modal('Резервные копии','BACKUPS',`<div class="backup-actions"><button class="primary" onclick="createManualBackup()">Создать копию сейчас</button><span>Автоматическая копия: ежедневно · хранение 30 дней</span></div>
+      <div class="backup-list">${state.backups.map(x=>`<div class="backup-row"><div><b>${x.source==='daily'?'Автоматическая':x.source==='pre_restore'?'Перед восстановлением':'Ручная'} копия</b><small>${fmtDate(x.created_at)}</small></div><button class="mini-btn" onclick="restoreBackup('${x.id}')">Восстановить</button></div>`).join('')||'<div class="collab-empty">Копий пока нет.</div>'}</div>`)
+  }catch(e){toast(String(e.message||e),true)}
+}
+async function createManualBackup(){try{await backupEdge('create');toast('Резервная копия создана');await openBackups()}catch(e){toast(String(e.message||e),true)}}
+async function restoreBackup(id){
+  if(!confirm('Восстановить данные из этой копии? Перед восстановлением система автоматически создаст ещё одну защитную копию.'))return;
+  try{await backupEdge('restore',{backup_id:id});toast('Данные восстановлены');closeP2Modal();await loadClientData()}catch(e){toast(String(e.message||e),true)}
+}
+
+function injectV5Tools(){
+  const d=$('dashboard');
+  if(d&&!$('managementToolsV5'))d.insertAdjacentHTML('beforeend',`<div class="card management-tools" id="managementToolsV5"><div class="ey">MANAGEMENT</div><div class="section" style="margin-top:6px"><div><h2>Управление и отчётность</h2><p>Кампании, аналитика, отчёты и резервные копии.</p></div></div><div class="ops-grid"><button class="quick" onclick="openCampaigns()"><strong>◎ Кампании</strong><span>Объединяйте Reels, Stories и посты одной задачей</span></button><button class="quick" onclick="openAnalyticsOverview()"><strong>▥ Аналитика</strong><span>Охват, сохранения, заявки и лучшие форматы</span></button><button class="quick" onclick="openMonthlyReport()"><strong>PDF Отчёт</strong><span>Месячный отчёт клиенту для печати / PDF</span></button><button class="quick" onclick="openBackups()"><strong>⟲ Backup</strong><span>Автокопии каждый день и восстановление</span></button></div></div>`);
+  const prod=$('production'),btn=$('bulkActionsBtn');if(prod&&btn&&btn.parentElement&&!$('campaignsBtn')){const b=document.createElement('button');b.id='campaignsBtn';b.className='chip';b.textContent='◎ Кампании';b.onclick=openCampaigns;btn.parentElement.appendChild(b)}
+}
+
+const __v5LoadClientDataBase=loadClientData;
+loadClientData=async function(){
+  await __v5LoadClientDataBase();
+  const [ca,me,mv,bk]=await Promise.all([
+    sb.from('content_campaigns').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false}),
+    sb.from('content_metrics').select('*').eq('client_id',state.clientId).order('updated_at',{ascending:false}),
+    sb.from('content_media_versions').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false}).limit(300),
+    sb.from('content_backups').select('id,source,created_at').eq('client_id',state.clientId).order('created_at',{ascending:false}).limit(30)
+  ]);
+  state.campaigns=ca.error?[]:(ca.data||[]);state.metrics=me.error?[]:(me.data||[]);state.mediaVersions=mv.error?[]:(mv.data||[]);state.backups=bk.error?[]:(bk.data||[]);
+  injectV5Tools()
+};
+const __v5RenderAllBase=renderAll;
+renderAll=function(){__v5RenderAllBase();injectV5Tools()};
+
+const __v5StartRealtimeBase=startRealtime;
+startRealtime=function(){
+  __v5StartRealtimeBase();
+  if(!realtimeChannel||!state.clientId)return;
+  realtimeChannel
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_campaigns',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_metrics',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_media_versions',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_backups',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+};
+
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+
+/* final Realtime override: subscribe after every table binding */
+startRealtime=function(){
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null}
+  if(!state.session||!state.clientId)return;
+  const f=`client_id=eq.${state.clientId}`;
+  realtimeChannel=sb.channel('content-center-'+state.clientId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_items',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_sync_events',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_comments',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'publish_queue',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_templates',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_links',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'saved_views',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'recurring_content_rules',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'client_approval_links',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'notification_settings',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'notification_outbox',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_campaigns',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_metrics',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_media_versions',filter:f},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_backups',filter:f},scheduleRealtimeReload)
+    .subscribe()
+};
+

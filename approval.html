@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06181d">
+<title>Согласование материала</title>
+<style>
+:root{--bg:#041216;--panel:#08242b;--line:rgba(123,210,221,.18);--text:#eaf7f8;--muted:#83a1a7;--accent:#67e6f1}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#0b3440 0,transparent 38%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,sans-serif;min-height:100vh}
+.wrap{width:min(760px,100%);margin:auto;padding:max(20px,env(safe-area-inset-top)) 16px max(32px,env(safe-area-inset-bottom))}
+.logo{font-size:12px;letter-spacing:.18em;color:#8fdde4;font-weight:800}.card{margin-top:18px;border:1px solid var(--line);border-radius:20px;background:rgba(8,36,43,.88);box-shadow:0 30px 100px rgba(0,0,0,.35);overflow:hidden}
+.head{padding:20px;border-bottom:1px solid var(--line)}.head h1{margin:7px 0 5px;font-size:28px;line-height:1.08}.meta{color:var(--muted);font-size:13px}.body{padding:20px;display:grid;gap:18px}
+.block{border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:14px;background:rgba(2,16,20,.45)}.label{font-size:10px;letter-spacing:.12em;color:#6f949b;text-transform:uppercase;margin-bottom:7px}.text{white-space:pre-wrap;line-height:1.55;color:#dcebed}
+.media{display:grid;gap:10px}.media img,.media video{width:100%;max-height:520px;object-fit:contain;border-radius:12px;background:#02090b}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:0;border-radius:12px;min-height:48px;padding:12px 14px;font:inherit;font-weight:800;cursor:pointer}.approve{background:#67e6f1;color:#041216}.changes{background:#18333a;color:#eaf7f8;border:1px solid var(--line)}
+textarea{width:100%;min-height:110px;resize:vertical;border-radius:12px;border:1px solid var(--line);background:#061b21;color:#eaf7f8;padding:12px;font:inherit;outline:none}textarea:focus{border-color:#67e6f1}.status{text-align:center;padding:24px;color:#9fc0c6}.done{padding:30px;text-align:center}.done b{display:block;font-size:24px;margin-bottom:7px}.hidden{display:none!important}
+@media(max-width:520px){.head h1{font-size:23px}.actions{grid-template-columns:1fr}.body,.head{padding:16px}}
+</style>
+</head>
+<body><main class="wrap"><div class="logo">CONTENT CENTER · CLIENT APPROVAL</div><section class="card" id="app"><div class="status">Загружаю материал…</div></section></main>
+<script>
+const SUPABASE_URL='https://kywxggukoqalzhuykhmx.supabase.co';
+const SUPABASE_KEY='sb_publishable_ZrC415NRTShLSkSEuRAgLA_FF-57qBd';
+const token=new URLSearchParams(location.search).get('t')||'';
+const app=document.getElementById('app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(body){const r=await fetch(SUPABASE_URL+'/functions/v1/client-approval',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify({token,...body})});const b=await r.json();if(!r.ok)throw new Error(b.error||'Ошибка');return b}
+function safeUrl(v){try{const u=new URL(v);return ['http:','https:'].includes(u.protocol)?u.href:''}catch{return''}}
+function renderMedia(list){return (list||[]).map(v=>{const u=safeUrl(v);if(!u)return'';return /\.(mp4|mov|m4v|webm)(\?|$)/i.test(u)?'<video controls playsinline src="'+esc(u)+'"></video>':'<img loading="lazy" src="'+esc(u)+'" alt="">'}).join('')}
+function render(d){
+ const x=d.content||{},date=x.scheduled_at?new Date(x.scheduled_at).toLocaleString('ru-RU'):'Дата не назначена';
+ app.innerHTML='<div class="head"><div class="meta">'+esc(d.client_name||'')+'</div><h1>'+esc(x.title||'Материал')+'</h1><div class="meta">'+esc(x.format||'')+' · '+esc(x.channel||'')+' · '+esc(date)+'</div></div><div class="body">'+
+ (x.brief?'<div class="block"><div class="label">Описание</div><div class="text">'+esc(x.brief)+'</div></div>':'')+
+ (x.caption?'<div class="block"><div class="label">Текст публикации</div><div class="text">'+esc(x.caption)+'</div></div>':'')+
+ ((x.media_urls||[]).length?'<div class="media">'+renderMedia(x.media_urls)+'</div>':'')+
+ '<div><div class="label">Комментарий / правки</div><textarea id="comment" placeholder="Если нужны изменения — напишите, что именно исправить"></textarea></div>'+
+ '<div class="actions"><button class="btn approve" onclick="submitDecision(\'approved\')">✓ Одобрить</button><button class="btn changes" onclick="submitDecision(\'changes\')">Нужны правки</button></div></div>'
+}
+async function submitDecision(decision){
+ const comment=document.getElementById('comment')?.value.trim()||'';
+ if(decision==='changes'&&!comment){document.getElementById('comment').focus();return}
+ document.querySelectorAll('button').forEach(b=>b.disabled=true);
+ try{await api({action:'submit',decision,comment});app.innerHTML='<div class="done"><b>'+(decision==='approved'?'✓ Материал одобрен':'Правки отправлены')+'</b><span>'+(decision==='approved'?'Спасибо. Команда увидит решение в Content Center.':'Комментарий уже появился у команды в карточке материала.')+'</span></div>'}catch(e){alert(e.message);document.querySelectorAll('button').forEach(b=>b.disabled=false)}
+}
+(async()=>{if(!token){app.innerHTML='<div class="status">Ссылка недействительна.</div>';return}try{const d=await api({action:'view'});if(d.decision){app.innerHTML='<div class="done"><b>'+(d.decision==='approved'?'✓ Уже одобрено':'Правки уже отправлены')+'</b><span>Решение по этой ссылке уже сохранено.</span></div>';return}render(d)}catch(e){app.innerHTML='<div class="status">'+(e.message==='link_expired'?'Ссылка истекла или была заменена новой.':'Не удалось открыть материал.')+'</div>'}})();
+</script></body></html>
