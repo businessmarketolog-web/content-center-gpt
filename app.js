@@ -18,7 +18,7 @@ const STATUS={
 };
 let state={
   session:null,clients:[],clientId:null,content:[],integrations:[],assets:[],analytics:[],syncEvents:[],
-  view:'dashboard',selectedId:null,filters:{q:'',status:'all',channel:'all'},calendarCursor:new Date(new Date().getFullYear(),new Date().getMonth(),1),calendarChannel:'all',calendarSelected:null,pendingFiles:[]
+  view:'dashboard',selectedId:null,filters:{q:'',status:'all',channel:'all'},calendarCursor:new Date(new Date().getFullYear(),new Date().getMonth(),1),calendarChannel:'all',calendarSelected:null,pendingFiles:[],libraryFilter:'all',libraryFiles:[]
 };
 
 const $=id=>document.getElementById(id);
@@ -394,19 +394,103 @@ function renderPublishing(){
 }
 function allMedia(){
   const map=new Map();
-  state.content.forEach(x=>(Array.isArray(x.media_urls)?x.media_urls:[]).forEach((url,i)=>map.set(url,{id:`${x.id}-${i}`,name:x.title,url,kind:/\.(mp4|mov|m4v)(\?|$)/i.test(url)?'video':'image',content_id:x.id,created_at:x.created_at})));
-  state.assets.forEach(a=>{if(!map.has(a.url))map.set(a.url,{id:a.id,name:a.name,url:a.url,kind:a.kind||'asset',content_id:a.metadata?.content_item_id||null,created_at:a.created_at})});
+  state.content.forEach(x=>(Array.isArray(x.media_urls)?x.media_urls:[]).forEach((url,i)=>{
+    const kind=/\.(mp4|mov|m4v|webm)(\?|$)/i.test(url)?'video':/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url)?'image':'image';
+    map.set(url,{id:`${x.id}-${i}`,name:x.title,url,kind,content_id:x.id,created_at:x.created_at,source:'content'});
+  }));
+  state.assets.forEach(a=>map.set(a.url,{id:a.id,name:a.name,url:a.url,kind:a.kind||'asset',content_id:a.metadata?.content_item_id||null,created_at:a.created_at,source:'library'}));
   return [...map.values()];
 }
-function renderLibrary(){
-  const media=allMedia();
-  $('library').innerHTML=`
-    <div class="section"><div><h2>Медиатека</h2><p>Все media URL выбранного клиента в одном месте.</p></div><span class="badge">${media.length} файлов</span></div>
-    <div class="library-grid">${media.map(m=>`<div class="asset" ${m.content_id?`onclick="openDrawer('${m.content_id}')"`:''}>
-      <div class="asset-preview">${m.url&&m.kind==='image'?`<img src="${esc(m.url)}" onerror="this.parentElement.innerHTML='▧'">`:m.url&&m.kind==='video'?`<video src="${esc(m.url)}" muted></video>`:'▧'}</div>
-      <div class="asset-meta"><b>${esc(m.name)}</b><small>${esc(m.kind||'media')}</small></div>
-    </div>`).join('')||'<div class="card empty">Добавьте media URL в карточку контента — они появятся здесь автоматически.</div>'}</div>`;
+function setLibraryFilter(v){state.libraryFilter=v;renderLibrary()}
+function openMediaModal(){$('mediaModal').classList.add('on');setTimeout(()=>$('assetName').focus(),50)}
+function closeMediaModal(){
+  $('mediaModal').classList.remove('on');
+  $('assetName').value='';$('assetUrl').value='';$('assetFiles').value='';
+  state.libraryFiles=[];renderAssetPreview();
 }
+function renderAssetPreview(){
+  const box=$('assetPreview');if(!box)return;
+  box.innerHTML=state.libraryFiles.map((f,i)=>{
+    const u=URL.createObjectURL(f),isVideo=f.type.startsWith('video/');
+    return `<div class="media-pick">${isVideo?`<video src="${u}" muted></video>`:`<img src="${u}">`}<button type="button" onclick="removeLibraryFile(${i})">×</button><span>${esc(f.name)}</span><small>${Math.max(.1,f.size/1024/1024).toFixed(1)} МБ</small></div>`;
+  }).join('');
+}
+function addLibraryFiles(files){
+  const accepted=[...files].filter(f=>f.type.startsWith('image/')||f.type.startsWith('video/'));
+  const merged=[...state.libraryFiles];
+  accepted.forEach(f=>{if(!merged.some(x=>x.name===f.name&&x.size===f.size&&x.lastModified===f.lastModified))merged.push(f)});
+  const tooLarge=merged.filter(f=>f.size>52428800);
+  state.libraryFiles=merged.filter(f=>f.size<=52428800).slice(0,20);
+  if(tooLarge.length)toast('Файлы больше 50 МБ пропущены',true);
+  renderAssetPreview();
+}
+function removeLibraryFile(i){state.libraryFiles.splice(i,1);renderAssetPreview()}
+async function saveLibraryAssets(){
+  const btn=$('mediaSave'),old=btn.textContent,name=$('assetName').value.trim(),link=$('assetUrl').value.trim();
+  if(!state.libraryFiles.length&&!link)return toast('Добавьте файл или ссылку',true);
+  if(link&&!/^https?:\/\//i.test(link))return toast('Ссылка должна начинаться с http:// или https://',true);
+  btn.disabled=true;btn.textContent='Сохраняю…';
+  try{
+    const rows=[];
+    for(const file of state.libraryFiles){
+      const safe=file.name.toLowerCase().replace(/[^a-z0-9а-яё._-]+/gi,'-').replace(/^-+|-+$/g,'')||'asset';
+      const path=`${state.clientId}/library/${Date.now()}-${crypto.randomUUID().slice(0,8)}-${safe}`;
+      const up=await sb.storage.from('content-assets').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});
+      if(up.error)throw up.error;
+      const pub=sb.storage.from('content-assets').getPublicUrl(path);
+      rows.push({
+        client_id:state.clientId,
+        name:name&&state.libraryFiles.length===1?name:file.name,
+        kind:file.type.startsWith('video/')?'video':'image',
+        url:pub.data.publicUrl,
+        metadata:{storage_path:path,size:file.size,mime:file.type,source:'media_library'}
+      });
+    }
+    if(link){
+      let defaultName='Ссылка';
+      try{defaultName=new URL(link).hostname.replace(/^www\./,'')}catch{}
+      rows.push({client_id:state.clientId,name:name||defaultName,kind:'link',url:link,metadata:{source:'media_library'}});
+    }
+    const ins=await sb.from('assets').insert(rows);
+    if(ins.error)throw ins.error;
+    closeMediaModal();toast(`Добавлено в медиатеку: ${rows.length}`);await loadClientData();show('library');
+  }catch(e){toast(e.message||'Не удалось добавить в медиатеку',true)}
+  finally{btn.disabled=false;btn.textContent=old}
+}
+function libraryAssetHtml(m){
+  const clickable=m.content_id?`onclick="openDrawer('${m.content_id}')"`:m.url?`onclick="window.open('${esc(m.url)}','_blank','noopener')"`:'';
+  const preview=m.kind==='image'?`<img src="${esc(m.url)}" loading="lazy" onerror="this.parentElement.innerHTML='▧'">`
+    :m.kind==='video'?`<video src="${esc(m.url)}" muted preload="metadata"></video><span class="video-badge">▶</span>`
+    :`<div class="link-preview">↗<small>${esc((()=>{try{return new URL(m.url).hostname}catch{return 'ссылка'}})())}</small></div>`;
+  const label=m.kind==='image'?'Фото':m.kind==='video'?'Видео':m.kind==='link'?'Ссылка':m.kind;
+  return `<div class="asset media-asset" ${clickable}>
+    <div class="asset-preview">${preview}</div>
+    <div class="asset-meta"><b>${esc(m.name||'Без названия')}</b><small>${label}</small></div>
+  </div>`;
+}
+function renderLibrary(){
+  const all=allMedia();
+  const media=state.libraryFilter==='all'?all:all.filter(m=>m.kind===state.libraryFilter);
+  const counts={
+    all:all.length,
+    image:all.filter(m=>m.kind==='image').length,
+    video:all.filter(m=>m.kind==='video').length,
+    link:all.filter(m=>m.kind==='link').length
+  };
+  $('library').innerHTML=`
+    <div class="section media-library-head">
+      <div><div class="ey">MEDIA LIBRARY</div><h2>Медиатека</h2><p>Фото, видео, ссылки и материалы выбранного клиента.</p></div>
+      <button class="primary" onclick="openMediaModal()">＋ Добавить</button>
+    </div>
+    <div class="media-filter-bar">
+      <button class="chip ${state.libraryFilter==='all'?'on':''}" onclick="setLibraryFilter('all')">Все <span>${counts.all}</span></button>
+      <button class="chip ${state.libraryFilter==='image'?'on':''}" onclick="setLibraryFilter('image')">Фото <span>${counts.image}</span></button>
+      <button class="chip ${state.libraryFilter==='video'?'on':''}" onclick="setLibraryFilter('video')">Видео <span>${counts.video}</span></button>
+      <button class="chip ${state.libraryFilter==='link'?'on':''}" onclick="setLibraryFilter('link')">Ссылки <span>${counts.link}</span></button>
+    </div>
+    <div class="library-grid">${media.map(libraryAssetHtml).join('')||'<div class="card empty media-empty"><b>Здесь пока пусто</b><span>Нажмите «＋ Добавить», чтобы загрузить фото, видео или сохранить ссылку.</span></div>'}</div>`;
+}
+
 function renderIntegrations(){
   const by=ch=>state.integrations.find(x=>x.channel===ch),ig=by('Instagram'),tg=by('Telegram');
   $('integrations').innerHTML=`
@@ -589,6 +673,12 @@ $('fPhotos').onchange=e=>addPhotoFiles(e.target.files);
 $('photoDrop').ondragover=e=>{e.preventDefault();$('photoDrop').classList.add('drag')};
 $('photoDrop').ondragleave=()=>$('photoDrop').classList.remove('drag');
 $('photoDrop').ondrop=e=>{e.preventDefault();$('photoDrop').classList.remove('drag');addPhotoFiles(e.dataTransfer.files)};
+$('mediaClose').onclick=closeMediaModal;$('mediaCancel').onclick=closeMediaModal;$('mediaSave').onclick=saveLibraryAssets;
+$('assetDrop').onclick=e=>{if(e.target.closest('.media-pick button'))return;$('assetFiles').click()};
+$('assetFiles').onchange=e=>addLibraryFiles(e.target.files);
+$('assetDrop').ondragover=e=>{e.preventDefault();$('assetDrop').classList.add('drag')};
+$('assetDrop').ondragleave=()=>$('assetDrop').classList.remove('drag');
+$('assetDrop').ondrop=e=>{e.preventDefault();$('assetDrop').classList.remove('drag');addLibraryFiles(e.dataTransfer.files)};
 $('drawerClose').onclick=closeDrawer;$('drawerBackdrop').onclick=closeDrawer;
 $('globalSearchBtn').onclick=openPalette;
 $('palette').onclick=e=>{if(e.target===$('palette'))closePalette()};
@@ -596,6 +686,6 @@ $('paletteInput').oninput=e=>renderPalette(e.target.value);
 $('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openPalette()}
-  if(e.key==='Escape'){closePalette();closeDrawer();$('contentModal').classList.remove('on')}
+  if(e.key==='Escape'){closePalette();closeDrawer();closeMediaModal();$('contentModal').classList.remove('on')}
 });
 boot();

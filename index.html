@@ -89,6 +89,31 @@
   </div>
 </div>
 
+
+<div class="modal" id="mediaModal">
+  <div class="dialog media-dialog">
+    <div class="dialog-head"><div><div class="ey">MEDIA LIBRARY</div><h2>Добавить в медиатеку</h2></div><button class="xbtn" id="mediaClose">×</button></div>
+    <p>Фото, видео и ссылки сохраняются только внутри выбранного клиента.</p>
+    <div class="form">
+      <label>Название <span class="optional">необязательно</span><input class="input" id="assetName" placeholder="Например: Отель Salinda — пляж"></label>
+      <label>Фото или видео
+        <div class="upload-zone media-upload-zone" id="assetDrop">
+          <input id="assetFiles" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" multiple hidden>
+          <div class="upload-icon">＋</div>
+          <div><b>Загрузить файлы</b><span>Перетащите сюда или нажмите · фото и видео · до 50 МБ на файл</span></div>
+        </div>
+        <div class="media-upload-preview" id="assetPreview"></div>
+      </label>
+      <div class="media-or"><span>или</span></div>
+      <label>Внешняя ссылка
+        <input class="input" id="assetUrl" type="url" placeholder="https://...">
+        <span class="field-help">Подойдёт ссылка на сайт, Google Drive, облако, референс или готовое медиа.</span>
+      </label>
+    </div>
+    <div class="dialog-actions"><button class="ghost" id="mediaCancel">Отмена</button><button class="primary" id="mediaSave">Добавить</button></div>
+  </div>
+</div>
+
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 <aside class="drawer" id="contentDrawer">
   <div class="drawer-head">
