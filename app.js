@@ -181,6 +181,8 @@ function renderDashboard(){
       </div>
     </div>
 
+    ${renderMiniCalendar14()}
+
     <div class="dashboard-grid">
       <div>
         <div class="section"><div><h2>Ближайший контент</h2><p>Нажмите на карточку — она раскроется. «Открыть» показывает полный материал.</p></div><button class="chip" onclick="show('calendar')">Весь календарь →</button></div>
@@ -207,6 +209,47 @@ function renderDashboard(){
     ${renderWorkBlocks()}`;
 }
 
+
+
+function next14Days(){
+  const out=[],today=new Date();today.setHours(0,0,0,0);
+  for(let i=0;i<14;i++){const d=new Date(today);d.setDate(today.getDate()+i);out.push(d)}
+  return out;
+}
+function goCalendarDay(iso){
+  const d=new Date(iso);
+  state.calendarCursor=new Date(d.getFullYear(),d.getMonth(),1);
+  state.calendarSelected=d.toISOString();
+  show('calendar');
+}
+function renderMiniCalendar14(){
+  const days=next14Days(),now=new Date();now.setHours(0,0,0,0);
+  const end=new Date(now.getTime()+14*86400000);
+  const items=state.content.filter(x=>x.scheduled_at&&new Date(x.scheduled_at)>=now&&new Date(x.scheduled_at)<end);
+  let cells='';
+  days.forEach((d,i)=>{
+    const dayItems=state.content.filter(x=>x.scheduled_at&&sameDay(x.scheduled_at,d));
+    const ig=dayItems.filter(x=>x.channel==='Instagram').length;
+    const tg=dayItems.filter(x=>x.channel==='Telegram').length;
+    let dots='';
+    for(let n=0;n<Math.min(ig,2);n++)dots+='<i class="channel-dot instagram"></i>';
+    for(let n=0;n<Math.min(tg,2);n++)dots+='<i class="channel-dot telegram"></i>';
+    const weekday=new Intl.DateTimeFormat('ru-RU',{weekday:'short'}).format(d).replace('.','');
+    cells+='<button class="mini-day '+(i===0?'today ':'')+(dayItems.length?'has-posts':'')+'" onclick="goCalendarDay(\''+d.toISOString()+'\')">'+
+      '<span class="mini-weekday">'+weekday+'</span>'+
+      '<b>'+d.getDate()+'</b>'+
+      '<span class="mini-dots">'+dots+'</span>'+
+      '<small>'+(dayItems.length||'')+'</small>'+
+    '</button>';
+  });
+  return '<div class="mini-cal-card">'+
+    '<div class="mini-cal-head">'+
+      '<div><div class="ey">БЛИЖАЙШИЕ 14 ДНЕЙ</div><h2>План публикаций</h2><p>'+items.length+' публикаций запланировано</p></div>'+
+      '<div class="mini-cal-legend"><span><i class="channel-dot instagram"></i> Instagram</span><span><i class="channel-dot telegram"></i> Telegram</span><button class="chip" onclick="show(\'calendar\')">Открыть календарь →</button></div>'+
+    '</div>'+
+    '<div class="mini-cal-grid">'+cells+'</div>'+
+  '</div>';
+}
 
 function humanBrandValue(key,value){
   const maps={
@@ -299,7 +342,7 @@ function renderCalendar(){
         const outside=d.getMonth()!==month,isToday=sameDay(today,d),isSelected=sameDay(selected,d);
         return `<div class="month-day ${outside?'outside':''} ${isToday?'today':''} ${isSelected?'selected':''}" onclick="selectCalendarDay('${d.toISOString()}')">
           <div class="month-day-head"><b>${d.getDate()}</b>${isToday?'<span>сегодня</span>':''}<button title="Добавить материал" onclick="event.stopPropagation();openAdd('${d.toISOString()}')">＋</button></div>
-          <div class="month-posts">${items.slice(0,3).map(x=>`<button class="month-post" onclick="event.stopPropagation();openDrawer('${x.id}')">${channelDot(x.channel)}<span>${esc(x.title)}</span></button>`).join('')}${items.length>3?`<small>+ ещё ${items.length-3}</small>`:''}</div>
+          <div class="month-posts">${items.slice(0,2).map(x=>`<button class="month-post" onclick="event.stopPropagation();openDrawer('${x.id}')">${channelDot(x.channel)}<span>${esc(x.title)}</span></button>`).join('')}${items.length>2?`<small>+ ещё ${items.length-2}</small>`:''}</div>
         </div>`;
       }).join('')}
     </div>
