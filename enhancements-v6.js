@@ -94,3 +94,54 @@ function injectEnhancementsV6(){
 const __v6RenderAllBase=renderAll;
 renderAll=function(){__v6RenderAllBase();injectEnhancementsV6()};
 setTimeout(injectEnhancementsV6,0);
+
+
+/* SECURE COMPOSIO BACKEND SETUP */
+function openComposioBackendSetup(){
+  openP2Modal('Backend Composio','SERVER CONNECTION',
+    '<div class="backend-setup">'+
+      '<div class="backend-security"><b>Ключ сохраняется только на сервере</b><span>Он нужен Edge Functions для публикации и Telegram-уведомлений. После сохранения Content Center не показывает ключ обратно.</span></div>'+
+      '<label>Composio API Key<input class="input" id="composioBackendKey" type="password" autocomplete="off" spellcheck="false" placeholder="Вставьте API key"></label>'+
+      '<div class="backend-actions"><button class="primary" onclick="saveComposioBackendKey()">Проверить и сохранить</button><button class="ghost" onclick="window.open(\'https://dashboard.composio.dev/\',\'_blank\',\'noopener\')">Открыть Composio</button></div>'+
+      '<p class="sub">Не отправляйте ключ в чат. Вводите его только здесь — запрос идёт напрямую в защищённую Supabase Edge Function.</p>'+
+    '</div>');
+}
+async function saveComposioBackendKey(){
+  const el=$('composioBackendKey'),key=el?.value.trim();
+  if(!key)return toast('Введите Composio API Key',true);
+  const s=(await sb.auth.getSession()).data.session;
+  if(!s)return toast('Нужно войти заново',true);
+  const btn=document.querySelector('.backend-actions .primary');
+  if(btn){btn.disabled=true;btn.textContent='Проверяю…'}
+  try{
+    const r=await fetch(SUPABASE_URL+'/functions/v1/save-composio-key',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+s.access_token},
+      body:JSON.stringify({api_key:key})
+    });
+    const b=await r.json();
+    if(!r.ok)throw new Error(b.error==='composio_key_verification_failed'?'Ключ Composio не прошёл проверку':(b.error||'Не удалось сохранить ключ'));
+    if(el)el.value='';
+    closeP2Modal();
+    toast('Backend Composio подключён');
+  }catch(e){
+    toast(String(e.message||e),true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Проверить и сохранить'}
+  }
+}
+function injectBackendSetupV6(){
+  const ints=$('integrations');
+  if(ints&&!$('composioBackendV6')){
+    const target=$('tgNotificationCard')||ints.firstElementChild;
+    const card=document.createElement('div');
+    card.className='card backend-setup-card';
+    card.id='composioBackendV6';
+    card.innerHTML='<div><div class="ey">SERVER CONNECTION</div><h2>Backend Composio</h2><p>Серверный доступ для публикации и Telegram-уведомлений.</p></div><button class="primary" onclick="openComposioBackendSetup()">Настроить</button>';
+    if(target&&target.parentNode===ints)target.insertAdjacentElement('afterend',card);else ints.insertAdjacentElement('afterbegin',card);
+  }
+}
+const __v6BackendRenderAll=renderAll;
+renderAll=function(){__v6BackendRenderAll();injectBackendSetupV6()};
+setTimeout(injectBackendSetupV6,0);
+
