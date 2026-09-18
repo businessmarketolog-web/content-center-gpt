@@ -10,7 +10,8 @@ const NAV=[
   ['production','◌','Производство'],
   ['publishing','↗','Публикации'],
   ['library','▦','Медиатека'],
-  ['integrations','⚙','Интеграции']
+  ['integrations','⚙','Интеграции'],
+  ['instructions','?','Инструкции']
 ];
 const STATUS={
   draft:'Черновик',production:'В работе',review:'Согласование',
@@ -20,6 +21,7 @@ let state={
   session:null,clients:[],clientId:null,content:[],integrations:[],assets:[],analytics:[],syncEvents:[],
   view:'dashboard',selectedId:null,filters:{q:'',status:'all',channel:'all'},calendarCursor:new Date(new Date().getFullYear(),new Date().getMonth(),1),calendarChannel:'all',calendarSelected:null,pendingFiles:[],libraryFilter:'all',libraryFiles:[]
 };
+let realtimeChannel=null,realtimeReloadTimer=null;
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
@@ -63,6 +65,23 @@ function show(v){
   if(v==='publishing')renderPublishing();
   if(v==='library')renderLibrary();
   if(v==='integrations')renderIntegrations();
+  if(v==='instructions')renderInstructions();
+}
+
+
+function scheduleRealtimeReload(){
+  clearTimeout(realtimeReloadTimer);
+  realtimeReloadTimer=setTimeout(async()=>{
+    if(state.session&&state.clientId)await loadClientData();
+  },350);
+}
+function startRealtime(){
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null}
+  if(!state.session||!state.clientId)return;
+  realtimeChannel=sb.channel('content-center-'+state.clientId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_items',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_sync_events',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .subscribe();
 }
 
 async function boot(){
@@ -102,6 +121,7 @@ async function loadClients(){
   $('client').innerHTML=state.clients.map(c=>`<option value="${c.id}">${esc(c.name)} · ${esc(c.business_type||'')}</option>`).join('');
   $('client').value=state.clientId;
   await loadClientData();
+  startRealtime();
   renderNav();show(state.view);
 }
 async function loadClientData(){
@@ -122,7 +142,7 @@ async function loadClientData(){
   renderAll();
 }
 function renderAll(){
-  renderDashboard();renderCalendar();renderApprovals();renderProduction();renderPublishing();renderLibrary();renderIntegrations();
+  renderDashboard();renderCalendar();renderApprovals();renderProduction();renderPublishing();renderLibrary();renderIntegrations();renderInstructions();
   $('crumb').textContent='Контент‑центр · '+(currentClient()?.name||'');
   renderNav();
 }
@@ -491,6 +511,64 @@ function renderLibrary(){
     <div class="library-grid">${media.map(libraryAssetHtml).join('')||'<div class="card empty media-empty"><b>Здесь пока пусто</b><span>Нажмите «＋ Добавить», чтобы загрузить фото, видео или сохранить ссылку.</span></div>'}</div>`;
 }
 
+
+function guideSample(){
+  const item=state.content.find(x=>x.title)||null;
+  const photo=allMedia().find(x=>x.kind==='image')?.url||'';
+  return {item,photo};
+}
+function guidePhotoVisual(title='Пример фото'){
+  const {photo}=guideSample();
+  return `<div class="guide-photo">${photo?`<img src="${esc(photo)}" alt="${esc(title)}" loading="lazy" onerror="this.style.display='none';this.parentElement.classList.add('fallback')">`:''}<div class="guide-photo-fallback">▧<small>${esc(title)}</small></div></div>`;
+}
+function guideMock(type){
+  const {item}=guideSample(),title=esc(item?.title||'Пример материала');
+  if(type==='dashboard')return `<div class="guide-mock"><div class="gm-top"><i></i><i></i><i></i></div><div class="gm-kpis"><b>4</b><b>2</b><b>7</b></div><div class="gm-line"></div><div class="gm-card">${title}</div></div>`;
+  if(type==='calendar')return `<div class="guide-calendar-mock">${Array.from({length:14},(_,i)=>`<div class="${[2,5,9].includes(i)?'busy':''}"><b>${i+1}</b>${i===2?'<span class="channel-dot instagram"></span>':''}${i===5?'<span class="channel-dot telegram"></span>':''}${i===9?'<span class="channel-dot instagram"></span><span class="channel-dot telegram"></span>':''}</div>`).join('')}</div>`;
+  if(type==='approval')return `<div class="guide-mock"><div class="gm-row"><span class="status review">Согласование</span><b>${title}</b></div><div class="gm-actions"><i>Вернуть</i><i class="okbtn">Одобрить</i></div></div>`;
+  if(type==='production')return `<div class="guide-kanban"><div><small>Черновик</small><b>${title}</b></div><div><small>В работе</small><b>Reels · монтаж</b></div><div><small>Согласование</small><b>Stories · отзыв</b></div></div>`;
+  if(type==='publishing')return `<div class="guide-mock"><div class="gm-row"><span class="channel-dot instagram"></span><b>${title}</b></div><div class="gm-row"><span class="status approved">Одобрено</span><span class="guide-date">20 сен · 18:00</span></div><div class="gm-button">Опубликовать</div></div>`;
+  if(type==='integrations')return `<div class="guide-integrations"><div><b>IG</b><span>● подключено</span></div><div><b>TG</b><span>● бот подключён</span></div><div><b>GPT</b><span>● sync active</span></div></div>`;
+  return `<div class="guide-mock"><div class="gm-card">${title}</div></div>`;
+}
+function renderInstructions(){
+  const c=currentClient(),sample=guideSample().item;
+  const sampleTitle=esc(sample?.title||'Reels: пример материала');
+  $('instructions').innerHTML=`
+    <div class="guide-hero">
+      <div><div class="ey">HELP CENTER</div><h2>Как работать с Content Center</h2><p>Короткие инструкции для ${esc(c?.name||'выбранного клиента')}. Открывайте нужный пункт — внутри есть действия, визуальный пример и правила.</p></div>
+      <div class="guide-hero-actions"><button class="primary" onclick="openAdd()">＋ Создать материал</button><button class="ghost" onclick="show('integrations')">Проверить интеграции</button></div>
+    </div>
+    <div class="guide-quick">
+      <div><b>1</b><span>Выберите клиента</span></div><i>→</i><div><b>2</b><span>Создайте материал</span></div><i>→</i><div><b>3</b><span>Проведите через статусы</span></div><i>→</i><div><b>4</b><span>Запланируйте / опубликуйте</span></div>
+    </div>
+    <div class="guide-grid">
+      <details class="guide-item" open><summary><span class="guide-num">01</span><div><b>Главная</b><small>Что требует внимания сегодня</small></div><span class="guide-plus">＋</span></summary><div class="guide-body"><div class="guide-copy"><ol><li>Сначала выберите клиента вверху.</li><li>Проверьте «Рабочий контроль»: нет ли материалов без фото, текста или даты.</li><li>Мини‑календарь показывает ближайшие 14 дней.</li></ol><p><b>Пример:</b> если стоит «2 без фото» — откройте карточки и добавьте медиа.</p><button class="guide-go" onclick="show('dashboard')">Открыть Главную →</button></div>${guideMock('dashboard')}</div></details>
+      <details class="guide-item"><summary><span class="guide-num">02</span><div><b>Создание материала</b><small>Текст, фото, канал, дата и статус</small></div><span class="guide-plus">＋</span></summary><div class="guide-body"><div class="guide-copy"><ol><li>Нажмите «＋ Материал».</li><li>Введите заголовок, выберите формат и канал.</li><li>Добавьте текст, фото и при необходимости дату.</li><li>Сохраните как «Черновик», если работа ещё не закончена.</li></ol><p><b>Пример:</b> «${sampleTitle}» → Reels → Instagram → 20 сентября → «В работе».</p><button class="guide-go" onclick="openAdd()">Создать материал →</button></div>${guidePhotoVisual('Фото для нового материала')}</div></details>
+      <details class="guide-item"><summary><span class="guide-num">03</span><div><b>Календарь</b><small>План публикаций по датам и каналам</small></div><span class="guide-plus">＋</span></summary><div class="guide-body"><div class="guide-copy"><ol><li>Розовая точка — Instagram, синяя — Telegram.</li><li>Нажмите на день, чтобы увидеть публикации этой даты.</li><li>Нажмите «＋» у даты, чтобы создать материал на этот день.</li><li>Фильтры сверху оставляют нужный канал.</li></ol><p><b>Пример:</b> две точки в одном дне означают публикации сразу в двух каналах.</p><button class="guide-go" onclick="show('calendar')">Открыть календарь →</button></div>${guideMock('calendar')}</div></details>
+      <details class="guide-item"><summary><span class="guide-num">04</span><div><b>Согласование</b><small>Финальная проверка перед публикацией</small></div><span class="guide-plus">＋</span></summary><div class="guide-body"><div class="guide-copy"><ol><li>Сюда попадают материалы со статусом «Согласование».</li><li>Проверьте текст, фото, канал и дату.</li><li>Если всё готово — «Одобрить». Если нужны правки — вернуть в работу.</li></ol><p><b>Правило:</b> перед публикацией материал должен пройти финальную проверку.</p><button class="guide-go" onclick="show('approvals')">Открыть согласование →</button></div>${guideMock('approval')}</div></details>
+      <details class="guide-item"><summary><span class="guide-num">05</span><div><b>Производство</b><small>Где находится каждый материал</small></div><span class="guide-plus">＋</span></summary><div class="guide-body"><div class="guide-copy"><ol><li>Используйте этапы: Черновик → В работе → Согласование → Одобрено.</li><li>Открывайте карточку, чтобы изменить текст, дату или статус.</li><li>Не оставляйте готовый материал в «Черновике».</li></ol><p><b>Пример:</b> сценарий готов, видео ещё монтируется → «В работе».</p><button class="guide-go" onclick="show('production')">Открыть производство →</button></div>${guideMock('production')}</div></details>
+      <details class="guide-item"><summary><span class="guide-num">06</span><div><b>Публикации</b><small>Готовые, запланированные и опубликованные материалы</small></div><span class="guide-plus">＋</span></summary><div class="guide-body"><div class="guide-copy"><ol><li>Перед публикацией проверьте выбранного клиента и канал.</li><li>Статус «Одобрено» означает готовность к отправке.</li><li>После отправки проверьте результат и статус.</li></ol><p><b>Важно:</b> аккаунты соцсетей закреплены за конкретным клиентом.</p><button class="guide-go" onclick="show('publishing')">Открыть публикации →</button></div>${guideMock('publishing')}</div></details>
+      <details class="guide-item"><summary><span class="guide-num">07</span><div><b>Медиатека</b><small>Фото, видео, ссылки и референсы</small></div><span class="guide-plus">＋</span></summary><div class="guide-body"><div class="guide-copy"><ol><li>Нажмите «＋ Добавить».</li><li>Загрузите фото/видео или вставьте ссылку.</li><li>Используйте фильтры «Фото / Видео / Ссылки».</li><li>Файлы сохраняются только у выбранного клиента.</li></ol><p><b>Лимит:</b> до 50 МБ на файл в медиатеке.</p><button class="guide-go" onclick="show('library')">Открыть медиатеку →</button></div>${guidePhotoVisual('Пример из медиатеки')}</div></details>
+      <details class="guide-item"><summary><span class="guide-num">08</span><div><b>Интеграции</b><small>Instagram, Telegram и ChatGPT Sync</small></div><span class="guide-plus">＋</span></summary><div class="guide-body"><div class="guide-copy"><ol><li>Проверьте подключения выбранного клиента.</li><li>Для Telegram укажите правильный @channelusername или chat_id.</li><li>ChatGPT Sync показывает ожидающие передачи изменения.</li></ol><p><b>Правило:</b> подключение одного клиента нельзя использовать для другого.</p><button class="guide-go" onclick="show('integrations')">Открыть интеграции →</button></div>${guideMock('integrations')}</div></details>
+    </div>
+    <div class="section"><div><div class="ey">CHATGPT SYNC</div><h2>Как устроена синхронизация</h2><p>Supabase — единая рабочая база между кабинетом и ChatGPT.</p></div></div>
+    <div class="sync-guide">
+      <div class="sync-path"><div class="sync-node"><span>ChatGPT</span><b>Вы даёте явную команду</b><small>«Добавь», «измени», «перенеси», «поставь статус»</small></div><div class="sync-arrow"><b>→</b><small>запись сразу</small></div><div class="sync-node core"><span>Supabase</span><b>Единая база</b><small>Материалы, даты, статусы, медиа</small></div><div class="sync-arrow"><b>→</b><small>Realtime</small></div><div class="sync-node"><span>Content Center</span><b>Экран обновляется автоматически</b><small>Открытый кабинет подтягивает изменения без F5</small></div></div>
+      <div class="sync-path reverse"><div class="sync-node"><span>Content Center</span><b>Вы меняете материал</b><small>Создание, статус, текст, дата</small></div><div class="sync-arrow"><b>→</b><small>сразу в журнал</small></div><div class="sync-node core"><span>Sync Events</span><b>Фиксируется изменение</b><small>С клиентом и изменёнными полями</small></div><div class="sync-arrow"><b>→</b><small>раз в час</small></div><div class="sync-node"><span>ChatGPT</span><b>Получает уведомление</b><small>Или читает изменения сразу по вашему запросу</small></div></div>
+    </div>
+    <div class="guide-rules"><div class="ey">ПРАВИЛА СИНХРОНИЗАЦИИ</div><div class="rules-grid">
+      <div><b>01</b><p><strong>Всегда называйте клиента.</strong> Например: «Для Max Way перенеси Reels на 21 сентября».</p></div>
+      <div><b>02</b><p><strong>Текст в чате сам не сохраняется.</strong> Чтобы он попал в Content Center, скажите: «сохрани», «добавь» или «измени».</p></div>
+      <div><b>03</b><p><strong>Один материал — один клиент.</strong> Контент, медиатека и соцсети разделены между проектами.</p></div>
+      <div><b>04</b><p><strong>ChatGPT → Center идёт через Supabase.</strong> Открытая страница получает изменения через Realtime.</p></div>
+      <div><b>05</b><p><strong>Center → ChatGPT фиксируется сразу, уведомление — до часа.</strong> Для мгновенной проверки попросите «покажи последние изменения».</p></div>
+      <div><b>06</b><p><strong>Перед публикацией проверьте:</strong> клиент, канал, дату и финальный текст/медиа.</p></div>
+    </div></div>
+    <div class="guide-mobile-note"><b>На iPhone:</b> нижнее меню прокручивается пальцем. Проведите влево, чтобы открыть «Медиатеку», «Интеграции» и «Инструкции».</div>
+  `;
+}
+
 function renderIntegrations(){
   const by=ch=>state.integrations.find(x=>x.channel===ch),ig=by('Instagram'),tg=by('Telegram');
   $('integrations').innerHTML=`
@@ -665,7 +743,7 @@ function copyConnectCommand(){
 }
 
 $('claimBtn').onclick=claim;
-$('client').onchange=async e=>{state.clientId=e.target.value;state.selectedId=null;closeDrawer();await loadClientData();show(state.view)};
+$('client').onchange=async e=>{state.clientId=e.target.value;state.selectedId=null;closeDrawer();await loadClientData();startRealtime();show(state.view)};
 $('addBtn').onclick=()=>openAdd();
 $('cancelAdd').onclick=closeAdd;$('cancelAdd2').onclick=closeAdd;$('saveAdd').onclick=addContent;
 $('photoDrop').onclick=e=>{if(e.target.closest('.photo-preview button'))return;$('fPhotos').click()};
