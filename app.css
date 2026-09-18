@@ -586,3 +586,112 @@ h2{letter-spacing:-.025em}
 .guide-rules{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(7,28,34,.55)}.rules-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:11px}.rules-grid>div{display:grid;grid-template-columns:27px 1fr;gap:7px;padding:10px;border:1px solid rgba(255,255,255,.04);border-radius:10px}.rules-grid b{font-size:8px;color:var(--cyan)}.rules-grid p{font-size:8px;line-height:1.5;color:#8eabb1;margin:0}.rules-grid strong{color:#d7e7ea}.guide-mobile-note{margin-top:10px;padding:11px 13px;border:1px solid rgba(255,211,107,.12);border-radius:12px;background:rgba(84,65,18,.12);color:#baa66f;font-size:8px;line-height:1.5}
 @media(max-width:900px){.guide-grid{grid-template-columns:1fr}.rules-grid{grid-template-columns:1fr 1fr}.sync-path{grid-template-columns:1fr 48px 1fr 48px 1fr}}
 @media(max-width:520px){.guide-hero{display:block;padding:14px}.guide-hero h2{font-size:21px}.guide-hero-actions{margin-top:11px;display:grid;grid-template-columns:1fr 1fr}.guide-hero-actions .primary,.guide-hero-actions .ghost{height:42px;min-height:42px;font-size:9px}.guide-quick{grid-template-columns:1fr 1fr;gap:5px}.guide-quick>i{display:none}.guide-quick>div{padding:5px}.guide-grid{gap:7px}.guide-item summary{grid-template-columns:32px minmax(0,1fr) 20px;padding:11px}.guide-body{grid-template-columns:1fr;padding:0 11px 11px;gap:0}.guide-photo,.guide-mock,.guide-calendar-mock,.guide-kanban,.guide-integrations{margin-top:2px;min-height:118px}.sync-path{grid-template-columns:1fr;gap:5px;padding:8px}.sync-node{min-height:0;padding:10px}.sync-arrow{display:flex;align-items:center;justify-content:center;gap:7px}.sync-arrow b{transform:rotate(90deg);font-size:16px}.sync-arrow small{font-size:6.5px}.rules-grid{grid-template-columns:1fr}.guide-rules{padding:12px}}
+
+
+/* TYPOGRAPHY READABILITY PASS — WEB + MOBILE */
+html{font-size:16px}
+body{
+  font-size:15.5px;
+  line-height:1.5;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+.top-title h1{font-size:30px;line-height:1.08}
+.section h2,.calendar-head h2{font-size:22px;line-height:1.2}
+.section p,.guide-hero p{font-size:12px;line-height:1.55}
+.ey{font-size:9px;letter-spacing:.12em}
+.nav{font-size:12px}
+.nav span:not(.ni):not(.count){font-size:10px}
+.nav .count{font-size:9px}
+.chip,.ghost,.primary,.icon-btn,.search-trigger,.mini-btn{font-size:11px}
+.select,.input,.textarea{font-size:14px}
+.content-title{font-size:14px;line-height:1.35}
+.content-meta{font-size:11px;line-height:1.45}
+.content-expand-inner,.detail-block,.drawer-body{font-size:13px;line-height:1.55}
+.task b{font-size:12px;line-height:1.45}
+.task p{font-size:11px;line-height:1.5}
+.asset-meta b{font-size:12px}
+.asset-meta small{font-size:10px}
+.int{font-size:12px}
+.ok,.need{font-size:11px}
+.metric small,.focus-label,.quick span,.work-block span,.work-block small{font-size:10px}
+.quick strong{font-size:12px}
+.brand-rule-label{font-size:10px}
+.brand-rule b{font-size:12px;line-height:1.45}
+.brand-rule p{font-size:10.5px;line-height:1.5}
+.month-weekday{font-size:9px}
+.month-day-head b{font-size:13px}
+.month-post span{font-size:10px}
+.month-posts>small{font-size:9px}
+.selected-day-item b{font-size:11px}
+.selected-day-item small{font-size:9px}
+.mini-cal-head p{font-size:10.5px}
+.mini-cal-legend{font-size:10px}
+.mini-weekday{font-size:8px}
+.mini-day b{font-size:16px}
+.guide-item summary b{font-size:13px}
+.guide-item summary small{font-size:10px;line-height:1.4}
+.guide-copy ol,.guide-copy p{font-size:11px;line-height:1.65}
+.guide-go{font-size:11px}
+.sync-node b{font-size:12px}
+.sync-node small{font-size:10px}
+.rules-grid p{font-size:10.5px;line-height:1.55}
+.guide-mobile-note{font-size:10.5px}
+
+@media(max-width:900px){
+  body{font-size:15px}
+  .content-title{font-size:13.5px}
+  .section h2,.calendar-head h2{font-size:21px}
+}
+
+@media(max-width:520px){
+  body{font-size:16px;line-height:1.5}
+  .top-title h1{font-size:28px;line-height:1.06}
+  .top-title .ey,.ey{font-size:9px}
+  .nav span:not(.ni):not(.count){font-size:9px!important}
+  .nav .count{font-size:8px!important}
+  .actions .primary{font-size:12px}
+  .select,.input,.textarea{font-size:16px!important;line-height:1.45}
+  .section h2,.calendar-head h2{font-size:20px}
+  .section p,.guide-hero p{font-size:12px}
+  .content-title{font-size:13px!important;line-height:1.42}
+  .content-meta{font-size:10.5px!important;line-height:1.5}
+  .content-expand-inner{font-size:12px;line-height:1.6}
+  .metric b{font-size:22px}
+  .metric small{font-size:9px}
+  .focus-num{font-size:23px}
+  .focus-label{font-size:9px}
+  .quick strong{font-size:11px}
+  .quick span{font-size:9px;line-height:1.35}
+  .work-block b{font-size:22px}
+  .work-block span,.work-block small{font-size:9.5px;line-height:1.4}
+  .brand-rule b{font-size:11px}
+  .brand-rule p{font-size:9.5px}
+  .task b{font-size:12px}
+  .task p{font-size:10px}
+  .asset-meta b{font-size:11px}
+  .asset-meta small{font-size:9px}
+  .int{font-size:11px}
+  .ok,.need{font-size:10px}
+  .chip,.ghost,.primary,.icon-btn,.search-trigger,.mini-btn{font-size:10.5px}
+  .month-weekday{font-size:8px!important}
+  .month-day-head b{font-size:11px!important}
+  .month-posts>small{font-size:7.5px!important}
+  .selected-day-head h3{font-size:16px!important}
+  .selected-day-item b{font-size:11px!important}
+  .selected-day-item small{font-size:9px!important}
+  .mini-cal-head h2{font-size:17px!important}
+  .mini-cal-head p{font-size:10px}
+  .mini-cal-legend{font-size:9px}
+  .mini-weekday{font-size:7px!important}
+  .mini-day b{font-size:15px!important}
+  .guide-hero h2{font-size:23px}
+  .guide-item summary b{font-size:12px}
+  .guide-item summary small{font-size:9px}
+  .guide-copy ol,.guide-copy p{font-size:10.5px}
+  .sync-node b{font-size:11px}
+  .sync-node small{font-size:9px}
+  .rules-grid p{font-size:10px}
+  .guide-mobile-note{font-size:10px}
+}
