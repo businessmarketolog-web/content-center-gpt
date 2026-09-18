@@ -16,13 +16,13 @@
   <div class="auth-orb orb-a"></div><div class="auth-orb orb-b"></div>
   <div class="dialog auth-dialog">
     <div class="ey">CONTENT CENTER / OWNER ACCESS</div>
-    <h2>Вход владельца</h2>
-    <p>Введите код доступа владельца. Он работает на любом вашем браузере или устройстве и создаёт отдельную защищённую сессию.</p>
+    <h2>Вход по коду владельца</h2>
+    <p>Введите код владельца. Пароли и email-вход не используются: после проверки кода создаётся защищённая сессия.</p>
     <div class="form">
-      <input class="input input-xl" id="setupCode" type="password" autocomplete="current-password" placeholder="Код доступа владельца">
+      <input class="input input-xl owner-code-input" id="setupCode" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Код владельца">
       <button class="primary primary-xl" id="claimBtn">Войти в кабинет</button>
     </div>
-    <div class="security-note">Код не хранится в GitHub. Защита от перебора включена: после серии неверных попыток вход временно блокируется.</div>
+    <div class="security-note">Используется только код владельца. Защита от перебора включена: после серии неверных попыток вход временно блокируется.</div>
   </div>
 </div>
 
@@ -136,5 +136,5 @@
   </div>
 </div>
 
-<script src="app.js?v=20260919-security4"></script>
+<script src="app.js?v=20260919-codeonly5"></script>
 </body></html>
