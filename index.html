@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#06171b" />
 <title>Content Center</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.js"></script>
-<link rel="stylesheet" href="app.css?v=20260918-text150-icons70">
+<link rel="stylesheet" href="app.css?v=20260919-mobileback1">
 </head>
 <body>
 <div class="noise"></div>
@@ -63,7 +63,7 @@
 
 <div class="modal" id="contentModal">
   <div class="dialog">
-    <div class="dialog-head"><div><div class="ey">NEW CONTENT</div><h2>Новый материал</h2></div><button class="xbtn" id="cancelAdd">×</button></div>
+    <div class="dialog-head"><button class="mobile-back" type="button" onclick="closeAdd()" aria-label="Назад">‹ <span>Назад</span></button><div><div class="ey">NEW CONTENT</div><h2>Новый материал</h2></div><button class="xbtn" id="cancelAdd">×</button></div>
     <p>Запись создаётся только внутри выбранного клиента.</p>
     <div class="form">
       <label>Заголовок<input class="input" id="fTitle" placeholder="Например: 5 причин выбрать отель"></label>
@@ -93,7 +93,7 @@
 
 <div class="modal" id="mediaModal">
   <div class="dialog media-dialog">
-    <div class="dialog-head"><div><div class="ey">MEDIA LIBRARY</div><h2>Добавить в медиатеку</h2></div><button class="xbtn" id="mediaClose">×</button></div>
+    <div class="dialog-head"><button class="mobile-back" type="button" onclick="closeMediaModal()" aria-label="Назад">‹ <span>Назад</span></button><div><div class="ey">MEDIA LIBRARY</div><h2>Добавить в медиатеку</h2></div><button class="xbtn" id="mediaClose">×</button></div>
     <p>Фото, видео и ссылки сохраняются только внутри выбранного клиента.</p>
     <div class="form">
       <label>Название <span class="optional">необязательно</span><input class="input" id="assetName" placeholder="Например: Отель Salinda — пляж"></label>
@@ -118,6 +118,7 @@
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 <aside class="drawer" id="contentDrawer">
   <div class="drawer-head">
+    <button class="mobile-back" type="button" onclick="closeDrawer()" aria-label="Назад">‹ <span>Назад</span></button>
     <div><div class="ey">CONTENT DETAILS</div><h2 id="dHeading">Материал</h2></div>
     <button class="xbtn" id="drawerClose">×</button>
   </div>
@@ -126,10 +127,10 @@
 
 <div class="palette" id="palette">
   <div class="palette-box">
-    <div class="palette-search"><span>⌕</span><input id="paletteInput" placeholder="Найти материал, формат или канал…"><kbd>ESC</kbd></div>
+    <div class="palette-search"><button class="mobile-back" type="button" onclick="closePalette()" aria-label="Назад">‹ <span>Назад</span></button><span class="palette-icon">⌕</span><input id="paletteInput" placeholder="Найти материал, формат или канал…"><kbd>ESC</kbd></div>
     <div class="palette-results" id="paletteResults"></div>
   </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=20260919-mobileback1"></script>
 </body></html>

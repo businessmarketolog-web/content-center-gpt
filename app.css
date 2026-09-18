@@ -610,3 +610,54 @@ h2{letter-spacing:-.025em}
 @media(max-width:520px){
   .nav .ni{font-size:21px!important;line-height:1!important}
 }
+
+
+/* MOBILE NESTED NAVIGATION */
+.mobile-back{
+  display:none;
+  border:0;
+  background:transparent;
+  color:#dff8fb;
+  font:700 14px/1 Inter,"Segoe UI",sans-serif;
+  align-items:center;
+  gap:4px;
+  padding:0 8px 0 0;
+  min-height:40px;
+  cursor:pointer;
+}
+.mobile-back:first-letter{font-size:25px;line-height:1}
+@media(max-width:520px){
+  .mobile-back{display:inline-flex;flex:0 0 auto}
+  .dialog-head,.drawer-head{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    gap:7px;
+  }
+  .dialog-head>.xbtn,.drawer-head>.xbtn{display:none}
+  .drawer-head{padding:12px max(12px,env(safe-area-inset-right)) 12px max(12px,env(safe-area-inset-left))}
+  .drawer-head h2{font-size:24px;line-height:1.15;overflow:hidden;text-overflow:ellipsis}
+  .drawer-head .ey,.dialog-head .ey{font-size:9px}
+  .palette{padding:0;background:#06191e;align-items:stretch}
+  .palette-box{width:100%;max-width:none;height:100dvh;border:0;border-radius:0;display:flex;flex-direction:column}
+  .palette-search{
+    padding:max(8px,env(safe-area-inset-top)) 12px 10px;
+    min-height:58px;
+    flex:0 0 auto;
+  }
+  .palette-search .mobile-back{padding-right:3px}
+  .palette-search .palette-icon{display:none}
+  .palette-search kbd{display:none}
+  .palette-results{max-height:none;flex:1;overflow:auto;padding-bottom:calc(88px + env(safe-area-inset-bottom))}
+  .modal.on{align-items:stretch;padding:0}
+  .modal.on .dialog{
+    width:100%;max-width:none;height:100dvh;max-height:none;border:0;border-radius:0;
+    padding:14px 12px calc(22px + env(safe-area-inset-bottom));overflow:auto;
+  }
+  .modal.on .dialog-head{
+    position:sticky;top:-14px;z-index:6;
+    margin:-14px -12px 10px;padding:max(10px,env(safe-area-inset-top)) 12px 10px;
+    background:rgba(8,31,37,.96);border-bottom:1px solid var(--line);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  }
+}
