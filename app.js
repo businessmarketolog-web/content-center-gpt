@@ -767,3 +767,204 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closePalette();closeDrawer();closeMediaModal();$('contentModal').classList.remove('on')}
 });
 boot();
+
+
+/* WORKFLOW COLLABORATION V1 */
+state.comments=state.comments||[];
+const DRAFT_NS='content-center-draft-v1';
+const draftKeyNew=()=>DRAFT_NS+':new:'+state.clientId;
+const draftKeyItem=id=>DRAFT_NS+':item:'+state.clientId+':'+id;
+const safeJsonParse=v=>{try{return JSON.parse(v)}catch{return null}};
+const currentAuthorLabel=()=>{const email=state.session?.user?.email||'';return email?email.split('@')[0]:'Участник'};
+const dueLabel=v=>!v?'':new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(v));
+const isOverdue=x=>Boolean(x?.due_at&&new Date(x.due_at)<new Date()&&x.status!=='published');
+
+function setDraftIndicator(id,text,kind=''){const el=$(id);if(!el)return;el.textContent=text;el.className='autosave-state '+kind}
+function saveNewLocalDraft(){
+  if(!state.clientId||!$('contentModal')?.classList.contains('on'))return;
+  localStorage.setItem(draftKeyNew(),JSON.stringify({
+    title:$('fTitle')?.value||'',format:$('fFormat')?.value||'Reels',channel:$('fChannel')?.value||'Instagram',
+    status:$('fStatus')?.value||'draft',date:$('fDate')?.value||'',caption:$('fCaption')?.value||'',
+    media:$('fMedia')?.value||'',assignee:$('fAssignee')?.value||'',due:$('fDue')?.value||'',savedAt:new Date().toISOString()
+  }));
+  setDraftIndicator('newDraftState','Черновик сохранён на этом устройстве · '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),'saved')
+}
+function restoreNewLocalDraft(){
+  const d=safeJsonParse(localStorage.getItem(draftKeyNew()));if(!d)return false;
+  const map={fTitle:'title',fFormat:'format',fChannel:'channel',fStatus:'status',fDate:'date',fCaption:'caption',fMedia:'media',fAssignee:'assignee',fDue:'due'};
+  Object.entries(map).forEach(([id,k])=>{if($(id)&&d[k]!=null)$(id).value=d[k]});
+  setDraftIndicator('newDraftState','Восстановлен локальный черновик','restored');return true
+}
+function clearNewLocalDraft(){if(state.clientId)localStorage.removeItem(draftKeyNew())}
+function drawerDraftPayload(){
+  if(!state.selectedId||!$('dTitle'))return null;
+  return {title:$('dTitle').value,brief:$('dBrief').value,caption:$('dCaption').value,scheduled_at:$('dDate').value,
+    format:$('dFormat').value,channel:$('dChannel').value,assignee:$('dAssignee')?.value||'',due_at:$('dDue')?.value||'',
+    media:$('dMedia').value,savedAt:new Date().toISOString()}
+}
+function saveItemLocalDraft(id=state.selectedId){
+  if(!id)return;const d=drawerDraftPayload();if(!d)return;
+  localStorage.setItem(draftKeyItem(id),JSON.stringify(d));
+  setDraftIndicator('drawerDraftState','Черновик сохранён локально · '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),'saved')
+}
+function restoreItemLocalDraft(x){
+  const d=safeJsonParse(localStorage.getItem(draftKeyItem(x.id)));if(!d)return false;
+  if(x.updated_at&&d.savedAt&&new Date(d.savedAt)<=new Date(x.updated_at))return false;
+  const map={dTitle:'title',dBrief:'brief',dCaption:'caption',dDate:'scheduled_at',dFormat:'format',dChannel:'channel',dAssignee:'assignee',dDue:'due_at',dMedia:'media'};
+  Object.entries(map).forEach(([id,k])=>{if($(id)&&d[k]!=null)$(id).value=d[k]});
+  setDraftIndicator('drawerDraftState','Восстановлен несохранённый черновик','restored');return true
+}
+function clearItemDraft(id){if(id)localStorage.removeItem(draftKeyItem(id))}
+function bindDrawerAutosave(id){
+  ['dTitle','dBrief','dCaption','dDate','dFormat','dChannel','dAssignee','dDue','dMedia'].forEach(fid=>{
+    const el=$(fid);if(!el)return;el.addEventListener('input',()=>saveItemLocalDraft(id));el.addEventListener('change',()=>saveItemLocalDraft(id))
+  })
+}
+function commentsFor(id){return state.comments.filter(x=>x.content_item_id===id)}
+function historyFor(id){return state.syncEvents.filter(x=>x.content_item_id===id).slice(0,20)}
+function historyActor(ev){
+  if(ev.actor_id&&ev.actor_id===state.session?.user?.id)return 'Вы';
+  if(ev.source==='backend')return 'Backend / ChatGPT';
+  return ev.actor_id?'Участник':'Content Center'
+}
+function historySummary(ev){
+  if(ev.event_type==='created')return 'Материал создан';
+  if(ev.event_type==='deleted')return 'Материал удалён';
+  const before=ev.payload?.before||{},after=ev.payload?.after||{};
+  const labels={title:'Заголовок',format:'Формат',channel:'Канал',status:'Статус',scheduled_at:'Дата публикации',caption:'Текст',brief:'Описание',assignee:'Ответственный',due_at:'Дедлайн',media_count:'Медиа'};
+  const changed=Object.keys(labels).filter(k=>JSON.stringify(before[k]??null)!==JSON.stringify(after[k]??null));
+  return changed.length?changed.map(k=>labels[k]).join(' · '):'Материал обновлён'
+}
+function renderHistoryEvent(ev){
+  return `<div class="history-event"><div><b>${esc(historySummary(ev))}</b><small>${esc(historyActor(ev))} · ${fmtDate(ev.created_at)}</small></div><span class="history-kind">${ev.event_type==='created'?'создано':'изменено'}</span></div>`
+}
+function renderComment(c){
+  const mine=c.author_id&&c.author_id===state.session?.user?.id;
+  return `<div class="comment ${mine?'mine':''}"><div class="comment-head"><b>${esc(mine?'Вы':(c.author_label||'Участник'))}</b><small>${fmtDate(c.created_at)}</small></div><p>${esc(c.body)}</p></div>`
+}
+async function addComment(id){
+  const input=$('commentText');if(!input)return;const body=input.value.trim();if(!body)return toast('Введите комментарий',true);
+  const r=await sb.from('content_comments').insert({client_id:state.clientId,content_item_id:id,author_id:state.session?.user?.id||null,author_label:currentAuthorLabel(),body});
+  if(r.error)return toast(r.error.message,true);input.value='';toast('Комментарий добавлен');await loadClientData();openDrawer(id)
+}
+
+async function loadClientData(){
+  const [c,i,a,n,s,cm]=await Promise.all([
+    sb.from('content_items').select('*').eq('client_id',state.clientId).order('scheduled_at',{ascending:true,nullsFirst:false}),
+    sb.from('client_integrations').select('*').eq('client_id',state.clientId).order('channel'),
+    sb.from('assets').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false}),
+    sb.from('analytics_daily').select('*').eq('client_id',state.clientId).order('day',{ascending:false}).limit(30),
+    sb.from('content_sync_events').select('id,content_item_id,event_type,source,actor_id,created_at,delivered_at,payload').eq('client_id',state.clientId).order('created_at',{ascending:false}).limit(120),
+    sb.from('content_comments').select('*').eq('client_id',state.clientId).order('created_at',{ascending:true})
+  ]);
+  if(c.error)return toast(c.error.message,true);if(i.error)return toast(i.error.message,true);
+  state.content=c.data||[];state.integrations=i.data||[];state.assets=a.error?[]:(a.data||[]);state.analytics=n.error?[]:(n.data||[]);
+  state.syncEvents=s.error?[]:(s.data||[]);state.comments=cm.error?[]:(cm.data||[]);renderAll()
+}
+function startRealtime(){
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null}
+  if(!state.session||!state.clientId)return;
+  realtimeChannel=sb.channel('content-center-'+state.clientId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_items',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_sync_events',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_comments',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .subscribe()
+}
+function metaLine(x){
+  const responsibility=[
+    x.assignee?`<span class="meta-owner">👤 ${esc(x.assignee)}</span>`:'',
+    x.due_at?`<span class="${isOverdue(x)?'meta-due overdue':'meta-due'}">◷ ${dueLabel(x.due_at)}</span>`:''
+  ].filter(Boolean).join('<span class="meta-dot"></span>');
+  return `<div class="content-meta"><span>${esc(x.format)}</span><span class="meta-dot"></span><span>${esc(x.channel)}</span><span class="meta-dot"></span><span>${fmtDate(x.scheduled_at)}</span><span class="meta-dot"></span><span>${mediaCount(x)} media</span>${responsibility?'<span class="meta-dot"></span>'+responsibility:''}</div>`
+}
+function openAdd(dateIso=null){
+  $('contentModal').classList.add('on');restoreNewLocalDraft();
+  if(dateIso){const d=new Date(dateIso);d.setHours(12,0,0,0);$('fDate').value=isoLocal(d.toISOString());saveNewLocalDraft()}
+}
+function closeAdd(discard=false){
+  if(!discard)saveNewLocalDraft();$('contentModal').classList.remove('on');
+  if(discard){clearNewLocalDraft();['fTitle','fDate','fCaption','fMedia','fAssignee','fDue'].forEach(id=>{if($(id))$(id).value=''});
+    if($('fPhotos'))$('fPhotos').value='';state.pendingFiles=[];previewPendingPhotos();setDraftIndicator('newDraftState','')}
+}
+async function addContent(){
+  const title=$('fTitle').value.trim();if(!title)return toast('Введите заголовок',true);
+  const btn=$('saveAdd'),old=btn.textContent;btn.disabled=true;btn.textContent=state.pendingFiles.length?'Загружаю фото…':'Сохраняю…';
+  try{
+    const manual=$('fMedia').value.split('\n').map(x=>x.trim()).filter(Boolean),uploaded=await uploadPendingPhotos(),media=[...uploaded.urls,...manual];
+    const scheduled=$('fDate').value?new Date($('fDate').value).toISOString():null,due=$('fDue').value?new Date($('fDue').value).toISOString():null;
+    const r=await sb.from('content_items').insert({client_id:state.clientId,title,format:$('fFormat').value,channel:$('fChannel').value,
+      status:$('fStatus').value,scheduled_at:scheduled,caption:$('fCaption').value.trim(),media_urls:media,
+      assignee:$('fAssignee').value.trim()||null,due_at:due}).select('id').single();
+    if(r.error)throw r.error;
+    if(uploaded.assets.length){const rows=uploaded.assets.map(a=>({...a,metadata:{...a.metadata,content_item_id:r.data.id}}));const ar=await sb.from('assets').insert(rows);if(ar.error)console.warn(ar.error)}
+    closeAdd(true);toast(media.length?`Материал добавлен · фото: ${uploaded.urls.length}`:'Материал добавлен');await loadClientData()
+  }catch(e){toast(e.message||'Не удалось сохранить материал',true)}finally{btn.disabled=false;btn.textContent=old}
+}
+
+let draggedContentId=null;
+function startTaskDrag(e,id){draggedContentId=id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',id);e.currentTarget.classList.add('dragging')}
+function endTaskDrag(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.lane.drag-over').forEach(x=>x.classList.remove('drag-over'))}
+function allowTaskDrop(e){e.preventDefault();e.dataTransfer.dropEffect='move';e.currentTarget.classList.add('drag-over')}
+function leaveTaskDrop(e){if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('drag-over')}
+async function dropTask(e,status){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');const id=e.dataTransfer.getData('text/plain')||draggedContentId;draggedContentId=null;
+  const x=itemById(id);if(!x||x.status===status)return;await setStatus(id,status)
+}
+function renderProduction(){
+  const cols=[['draft','Черновики'],['production','В работе'],['review','Согласование'],['approved','Готово']];
+  $('production').innerHTML=`
+    <div class="section"><div><h2>Производство</h2><p>Перетаскивайте карточки между этапами. На мобильном статус можно сменить внутри карточки.</p></div><button class="chip" onclick="openAdd()">＋ Материал</button></div>
+    <div class="kanban">${cols.map(([s,n])=>{
+      const items=state.content.filter(x=>x.status===s);
+      return `<div class="lane" data-status="${s}" ondragover="allowTaskDrop(event)" ondragleave="leaveTaskDrop(event)" ondrop="dropTask(event,'${s}')"><div class="lane-head"><h3>${n}</h3><span class="lane-count">${items.length}</span></div>
+        ${items.map(x=>`<div class="task" draggable="true" ondragstart="startTaskDrag(event,'${x.id}')" ondragend="endTaskDrag(event)" onclick="openDrawer('${x.id}')"><b>${esc(x.title)}</b><p>${esc(x.format)} · ${esc(x.channel)} · ${fmtDate(x.scheduled_at)}</p>${x.assignee||x.due_at?`<div class="task-responsibility">${x.assignee?`<span>👤 ${esc(x.assignee)}</span>`:''}${x.due_at?`<span class="${isOverdue(x)?'overdue':''}">◷ ${dueLabel(x.due_at)}</span>`:''}</div>`:''}</div>`).join('')||'<div class="empty">Пусто</div>'}
+      </div>`;
+    }).join('')}</div>`
+}
+function openDrawer(id){
+  const x=itemById(id);if(!x)return;state.selectedId=id;const comments=commentsFor(id),history=historyFor(id);$('dHeading').textContent=x.title;$('drawerBody').className='drawer-body';
+  $('drawerBody').innerHTML=`
+    <div class="detail-meta">${statusBadge(x)}<span class="badge">${esc(x.format)}</span><span class="badge">${esc(x.channel)}</span>${x.assignee?`<span class="badge">👤 ${esc(x.assignee)}</span>`:''}${x.due_at?`<span class="badge ${isOverdue(x)?'due-overdue':''}">◷ ${dueLabel(x.due_at)}</span>`:''}</div>
+    <div class="form">
+      <label>Заголовок<input class="input" id="dTitle" value="${esc(x.title)}"></label>
+      <label>Краткое описание<textarea class="textarea compact" id="dBrief" placeholder="Что должно быть в материале">${esc(x.brief||'')}</textarea></label>
+      <label>Текст / caption<textarea class="textarea" id="dCaption" placeholder="Текст публикации">${esc(x.caption||'')}</textarea></label>
+      <div class="cols"><label>Статус<select class="input" id="dStatus">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${k===x.status?'selected':''}>${v}</option>`).join('')}</select></label>
+        <label>Дата публикации<input class="input" id="dDate" type="datetime-local" value="${isoLocal(x.scheduled_at)}"></label></div>
+      <div class="cols"><label>Ответственный<input class="input" id="dAssignee" placeholder="Например: Наташа" value="${esc(x.assignee||'')}"></label>
+        <label>Дедлайн подготовки<input class="input" id="dDue" type="datetime-local" value="${isoLocal(x.due_at)}"></label></div>
+      <div class="cols"><label>Формат<select class="input" id="dFormat">${['Reels','Stories','Carousel','Post'].map(v=>`<option ${v===x.format?'selected':''}>${v}</option>`).join('')}</select></label>
+        <label>Канал<select class="input" id="dChannel">${['Instagram','Telegram'].map(v=>`<option ${v===x.channel?'selected':''}>${v}</option>`).join('')}</select></label></div>
+      <label>Media URL<textarea class="textarea compact" id="dMedia" placeholder="По одному URL на строку">${esc((Array.isArray(x.media_urls)?x.media_urls:[]).join('\n'))}</textarea></label>
+    </div>
+    <div class="autosave-state" id="drawerDraftState">Изменения автоматически сохраняются локально до нажатия «Сохранить».</div>
+    <div class="detail-block"><div class="label">Публикационный ID</div><div class="sub">${esc(x.external_post_id||'Ещё не опубликовано')}</div></div>
+    <div class="detail-actions"><button class="primary" onclick="saveDrawer()">Сохранить</button>
+      ${x.status==='review'?`<button class="ghost" onclick="setStatus('${x.id}','approved')">✓ Одобрить</button>`:''}
+      ${['approved','scheduled','failed'].includes(x.status)?`<button class="ghost" onclick="publishItem('${x.id}')">↗ Опубликовать</button>`:''}
+      <button class="ghost" onclick="copyItemGPT('${x.id}')">✦ В ChatGPT</button></div>
+    <section class="collab-section"><div class="collab-head"><div><div class="ey">COMMENTS</div><h3>Комментарии</h3></div><span class="badge">${comments.length}</span></div>
+      <div class="comment-list">${comments.map(renderComment).join('')||'<div class="collab-empty">Комментариев пока нет</div>'}</div>
+      <div class="comment-compose"><textarea class="textarea compact" id="commentText" placeholder="Напишите правку или комментарий…"></textarea><button class="primary" onclick="addComment('${id}')">Отправить</button></div></section>
+    <details class="history-section"><summary><span><b>История изменений</b><small>${history.length} последних событий</small></span><span>＋</span></summary>
+      <div class="history-list">${history.map(renderHistoryEvent).join('')||'<div class="collab-empty">История появится после изменений материала</div>'}</div></details>`;
+  $('contentDrawer').classList.add('on');$('drawerBackdrop').classList.add('on');const restored=restoreItemLocalDraft(x);bindDrawerAutosave(id);
+  if(!restored)setDraftIndicator('drawerDraftState','Изменения автоматически сохраняются локально до нажатия «Сохранить».')
+}
+function closeDrawer(){if(state.selectedId)saveItemLocalDraft(state.selectedId);$('contentDrawer').classList.remove('on');$('drawerBackdrop').classList.remove('on');state.selectedId=null}
+async function saveDrawer(){
+  const id=state.selectedId;if(!id)return;const media=$('dMedia').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  const payload={title:$('dTitle').value.trim(),brief:$('dBrief').value.trim(),caption:$('dCaption').value.trim(),status:$('dStatus').value,
+    format:$('dFormat').value,channel:$('dChannel').value,scheduled_at:$('dDate').value?new Date($('dDate').value).toISOString():null,
+    assignee:$('dAssignee').value.trim()||null,due_at:$('dDue').value?new Date($('dDue').value).toISOString():null,media_urls:media};
+  if(!payload.title)return toast('Заголовок не может быть пустым',true);const r=await sb.from('content_items').update(payload).eq('id',id);
+  if(r.error)return toast(r.error.message,true);clearItemDraft(id);toast('Материал сохранён');await loadClientData();openDrawer(id)
+}
+
+if($('cancelAdd'))$('cancelAdd').onclick=()=>closeAdd(false);
+if($('cancelAdd2'))$('cancelAdd2').onclick=()=>closeAdd(true);
+['fTitle','fFormat','fChannel','fStatus','fDate','fCaption','fMedia','fAssignee','fDue'].forEach(id=>{
+  if($(id)){$(id).addEventListener('input',saveNewLocalDraft);$(id).addEventListener('change',saveNewLocalDraft)}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('contentModal')?.classList.contains('on'))saveNewLocalDraft()},true);
+

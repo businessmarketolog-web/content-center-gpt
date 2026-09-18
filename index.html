@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#06171b" />
 <title>Content Center</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.js"></script>
-<link rel="stylesheet" href="app.css?v=20260919-mobileback1">
+<link rel="stylesheet" href="app.css?v=20260919-workflow1">
 </head>
 <body>
 <div class="noise"></div>
@@ -73,7 +73,11 @@
       </div>
       <div class="cols">
         <label>Статус<select class="input" id="fStatus"><option value="draft">Черновик</option><option value="production">В работе</option><option value="review">Согласование</option><option value="approved">Одобрено</option></select></label>
-        <label>Дата<input class="input" id="fDate" type="datetime-local"></label>
+        <label>Дата публикации<input class="input" id="fDate" type="datetime-local"></label>
+      </div>
+      <div class="cols">
+        <label>Ответственный<input class="input" id="fAssignee" placeholder="Например: Наташа"></label>
+        <label>Дедлайн подготовки<input class="input" id="fDue" type="datetime-local"></label>
       </div>
       <label>Текст<textarea class="textarea" id="fCaption" placeholder="Текст публикации"></textarea></label>
       <label>Фото
@@ -86,7 +90,7 @@
       </label>
       <label>Ссылка на готовое медиа <span class="optional">необязательно</span><textarea class="textarea compact" id="fMedia" placeholder="Если файл уже где-то размещён — по одному HTTPS URL на строку"></textarea></label>
     </div>
-    <div class="dialog-actions"><button class="ghost" id="cancelAdd2">Отмена</button><button class="primary" id="saveAdd">Сохранить</button></div>
+    <div class="autosave-state" id="newDraftState">Черновик автоматически сохраняется на этом устройстве.</div><div class="dialog-actions"><button class="ghost" id="cancelAdd2">Отмена и удалить черновик</button><button class="primary" id="saveAdd">Сохранить</button></div>
   </div>
 </div>
 
@@ -132,5 +136,5 @@
   </div>
 </div>
 
-<script src="app.js?v=20260919-mobileback1"></script>
+<script src="app.js?v=20260919-workflow1"></script>
 </body></html>
