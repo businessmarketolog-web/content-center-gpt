@@ -968,3 +968,13 @@ if($('cancelAdd2'))$('cancelAdd2').onclick=()=>closeAdd(true);
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('contentModal')?.classList.contains('on'))saveNewLocalDraft()},true);
 
+
+
+/* NEW CONTENT DRAFT RESTORE FOR ALL ENTRY POINTS */
+if($('contentModal')){
+  const draftModalObserver=new MutationObserver(()=>{
+    if($('contentModal').classList.contains('on'))restoreNewLocalDraft()
+  });
+  draftModalObserver.observe($('contentModal'),{attributes:true,attributeFilter:['class']})
+}
+
