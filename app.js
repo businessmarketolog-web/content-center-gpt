@@ -831,7 +831,7 @@ function historySummary(ev){
   if(ev.event_type==='created')return 'Материал создан';
   if(ev.event_type==='deleted')return 'Материал удалён';
   const before=ev.payload?.before||{},after=ev.payload?.after||{};
-  const labels={title:'Заголовок',format:'Формат',channel:'Канал',status:'Статус',scheduled_at:'Дата публикации',caption:'Текст',brief:'Описание',assignee:'Ответственный',due_at:'Дедлайн',media_count:'Медиа'};
+  const labels={title:'Заголовок',format:'Формат',channel:'Канал',status:'Статус',scheduled_at:'Дата публикации',caption:'Текст',brief:'Описание',assignee:'Ответственный',due_at:'Дедлайн',media_count:'Медиа',tags:'Теги',archived_at:'Архив'};
   const changed=Object.keys(labels).filter(k=>JSON.stringify(before[k]??null)!==JSON.stringify(after[k]??null));
   return changed.length?changed.map(k=>labels[k]).join(' · '):'Материал обновлён'
 }
@@ -1179,7 +1179,7 @@ async function restoreHistoryVersion(eventId){
   const x=itemById(ev.content_item_id);if(!x)return;
   if(!confirm('Восстановить состояние материала до этого изменения? Текущее состояние останется в истории.'))return;
   const payload={};
-  ['title','format','channel','status','scheduled_at','caption','brief','assignee','due_at'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(b,k))payload[k]=b[k]});
+  ['title','format','channel','status','scheduled_at','caption','brief','assignee','due_at','tags'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(b,k))payload[k]=b[k]});
   if(Array.isArray(b.media_urls))payload.media_urls=b.media_urls;
   const r=await sb.from('content_items').update(payload).eq('id',x.id);if(r.error)return toast(r.error.message,true);
   clearItemDraft(x.id);toast('Предыдущая версия восстановлена');await loadClientData();openDrawer(x.id)
@@ -1212,4 +1212,272 @@ function startRealtime(){
     .subscribe()
 }
 ensurePackage2Shell();
+
+
+
+/* OPERATIONS PACKAGE V3 */
+state.archivedContent=state.archivedContent||[];
+state.contentLinks=state.contentLinks||[];
+state.savedViews=state.savedViews||[];
+state.recurringRules=state.recurringRules||[];
+
+function tagsArray(v){
+  if(Array.isArray(v))return v.filter(Boolean);
+  return String(v||'').split(',').map(x=>x.trim()).filter(Boolean).slice(0,12)
+}
+function tagHtml(x){return (x.tags||[]).slice(0,3).map(t=>`<span class="content-tag">#${esc(t)}</span>`).join('')}
+function readinessIssues(x){
+  if(!x)return ['Материал не найден'];
+  const issues=[];
+  if(!String(x.title||'').trim())issues.push('Нет заголовка');
+  if(!String(x.caption||x.brief||'').trim())issues.push('Нет текста или описания');
+  if(!x.channel)issues.push('Не выбран канал');
+  if(!x.format)issues.push('Не выбран формат');
+  if(!x.scheduled_at)issues.push('Не назначена дата публикации');
+  if(x.channel==='Instagram'&&mediaCount(x)===0)issues.push('Не добавлено медиа');
+  return issues
+}
+function readinessWarnings(x){
+  const w=[];
+  if(!x.assignee)w.push('Не назначен ответственный');
+  if(!x.due_at)w.push('Не указан дедлайн подготовки');
+  return w
+}
+function readinessBlock(id,action='готовности'){
+  const x=state.content.find(v=>v.id===id);if(!x)return false;
+  const issues=readinessIssues(x);if(!issues.length)return false;
+  openP2Modal('Материал не готов','READINESS CHECK',`<div class="readiness-card"><p>Перед ${esc(action)} нужно закрыть обязательные пункты:</p><div class="readiness-list">${issues.map(i=>`<div>✕ ${esc(i)}</div>`).join('')}</div><button class="primary" onclick="closeP2Modal();openDrawer('${id}')">Открыть материал</button></div>`);
+  return true
+}
+async function setStatus(id,status){
+  if(['approved','scheduled','published'].includes(status)&&readinessBlock(id,'переводом в «'+(STATUS[status]||status)+'»'))return;
+  const r=await sb.from('content_items').update({status}).eq('id',id);
+  if(r.error)return toast(r.error.message,true);
+  toast('Статус: '+STATUS[status]);await loadClientData();
+  if(state.selectedId===id)openDrawer(id)
+}
+const __p3PublishBase=publishItem;
+publishItem=async function(id){
+  if(readinessBlock(id,'публикацией'))return;
+  return __p3PublishBase(id)
+};
+
+function metaLine(x){
+  const responsibility=[
+    x.assignee?`<span class="meta-owner">👤 ${esc(x.assignee)}</span>`:'',
+    x.due_at?`<span class="${isOverdue(x)?'meta-due overdue':'meta-due'}">◷ ${dueLabel(x.due_at)}</span>`:''
+  ].filter(Boolean).join('<span class="meta-dot"></span>');
+  const tags=tagHtml(x);
+  return `<div class="content-meta"><span>${esc(x.format)}</span><span class="meta-dot"></span><span>${esc(x.channel)}</span><span class="meta-dot"></span><span>${fmtDate(x.scheduled_at)}</span><span class="meta-dot"></span><span>${mediaCount(x)} media</span>${responsibility?'<span class="meta-dot"></span>'+responsibility:''}${tags?'<span class="meta-tags">'+tags+'</span>':''}</div>`
+}
+
+function drawerDraftPayload(){
+  if(!state.selectedId||!$('dTitle'))return null;
+  return {title:$('dTitle').value,brief:$('dBrief').value,caption:$('dCaption').value,scheduled_at:$('dDate').value,
+    format:$('dFormat').value,channel:$('dChannel').value,assignee:$('dAssignee')?.value||'',due_at:$('dDue')?.value||'',
+    media:$('dMedia').value,tags:$('dTags')?.value||'',savedAt:new Date().toISOString()}
+}
+function restoreItemLocalDraft(x){
+  const d=safeJsonParse(localStorage.getItem(draftKeyItem(x.id)));if(!d)return false;
+  if(x.updated_at&&d.savedAt&&new Date(d.savedAt)<=new Date(x.updated_at))return false;
+  const map={dTitle:'title',dBrief:'brief',dCaption:'caption',dDate:'scheduled_at',dFormat:'format',dChannel:'channel',dAssignee:'assignee',dDue:'due_at',dMedia:'media',dTags:'tags'};
+  Object.entries(map).forEach(([id,k])=>{if($(id)&&d[k]!=null)$(id).value=d[k]});
+  setDraftIndicator('drawerDraftState','Восстановлен несохранённый черновик','restored');return true
+}
+function bindDrawerAutosave(id){
+  ['dTitle','dBrief','dCaption','dDate','dFormat','dChannel','dAssignee','dDue','dMedia','dTags'].forEach(fid=>{
+    const el=$(fid);if(!el)return;el.addEventListener('input',()=>saveItemLocalDraft(id));el.addEventListener('change',()=>saveItemLocalDraft(id))
+  })
+}
+async function saveDrawer(){
+  const id=state.selectedId;if(!id)return;const media=$('dMedia').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  const payload={title:$('dTitle').value.trim(),brief:$('dBrief').value.trim(),caption:$('dCaption').value.trim(),status:$('dStatus').value,
+    format:$('dFormat').value,channel:$('dChannel').value,scheduled_at:$('dDate').value?new Date($('dDate').value).toISOString():null,
+    assignee:$('dAssignee').value.trim()||null,due_at:$('dDue').value?new Date($('dDue').value).toISOString():null,
+    media_urls:media,tags:tagsArray($('dTags')?.value)};
+  if(!payload.title)return toast('Заголовок не может быть пустым',true);
+  if(['approved','scheduled'].includes(payload.status)){
+    const preview={...itemById(id),...payload};const issues=readinessIssues(preview);
+    if(issues.length){openP2Modal('Материал не готов','READINESS CHECK',`<div class="readiness-card"><p>Статус не изменён. Заполните обязательные поля:</p><div class="readiness-list">${issues.map(i=>`<div>✕ ${esc(i)}</div>`).join('')}</div></div>`);return}
+  }
+  const r=await sb.from('content_items').update(payload).eq('id',id);
+  if(r.error)return toast(r.error.message,true);clearItemDraft(id);toast('Материал сохранён');await loadClientData();openDrawer(id)
+}
+
+function linksFor(id){return state.contentLinks.filter(l=>l.from_content_id===id||l.to_content_id===id)}
+function linkedOther(link,id){const oid=link.from_content_id===id?link.to_content_id:link.from_content_id;return state.content.find(x=>x.id===oid)||state.archivedContent.find(x=>x.id===oid)}
+async function addContentLink(id){
+  const target=$('linkTarget')?.value,relation=$('linkRelation')?.value||'sequence';if(!target)return toast('Выберите связанный материал',true);
+  const r=await sb.from('content_links').insert({client_id:state.clientId,from_content_id:id,to_content_id:target,relation_type:relation});
+  if(r.error)return toast(r.error.message.includes('duplicate')?'Такая связь уже существует':r.error.message,true);
+  toast('Материалы связаны');await loadClientData();openDrawer(id)
+}
+async function removeContentLink(linkId,id){
+  const r=await sb.from('content_links').delete().eq('id',linkId);if(r.error)return toast(r.error.message,true);
+  toast('Связь удалена');await loadClientData();openDrawer(id)
+}
+async function archiveItem(id){
+  const x=state.content.find(v=>v.id===id);if(!x)return;
+  if(!confirm(`Архивировать «${x.title}»? Материал можно будет восстановить.`))return;
+  const r=await sb.from('content_items').update({archived_at:new Date().toISOString(),archived_by:state.session?.user?.id||null}).eq('id',id);
+  if(r.error)return toast(r.error.message,true);clearItemDraft(id);closeDrawer();toast('Материал перемещён в архив');await loadClientData()
+}
+async function restoreArchived(id){
+  const r=await sb.from('content_items').update({archived_at:null,archived_by:null}).eq('id',id);
+  if(r.error)return toast(r.error.message,true);toast('Материал восстановлен');await loadClientData();openArchive()
+}
+function openArchive(){
+  openP2Modal('Архив','CONTENT ARCHIVE',state.archivedContent.length?`<div class="archive-list">${state.archivedContent.map(x=>`<div class="archive-row"><div><b>${esc(x.title)}</b><small>${esc(x.format)} · ${esc(x.channel)} · архив ${fmtDate(x.archived_at)}</small></div><button class="mini-btn accent" onclick="restoreArchived('${x.id}')">Восстановить</button></div>`).join('')}</div>`:'<div class="feature-empty"><b>Архив пуст</b><span>Архивированные материалы будут храниться здесь и не попадут в рабочий календарь.</span></div>')
+}
+
+function augmentDrawerP3(id){
+  const x=state.content.find(v=>v.id===id);if(!x)return;
+  const form=$('drawerBody')?.querySelector('.form');
+  if(form&&!$('dTags')){
+    form.insertAdjacentHTML('beforeend',`<label>Теги<input class="input" id="dTags" placeholder="Например: отзывы, мальдивы, дети" value="${esc((x.tags||[]).join(', '))}"></label>`);
+    const localTagDraft=safeJsonParse(localStorage.getItem(draftKeyItem(id)));if(localTagDraft?.tags&&(!x.updated_at||!localTagDraft.savedAt||new Date(localTagDraft.savedAt)>new Date(x.updated_at)))$('dTags').value=localTagDraft.tags;
+    $('dTags').addEventListener('input',()=>saveItemLocalDraft(id))
+  }
+  const detailActions=$('drawerBody')?.querySelector('.detail-actions');
+  if(detailActions&&!detailActions.querySelector('.p3-archive')){
+    detailActions.insertAdjacentHTML('beforeend',`<button class="ghost p3-archive" onclick="archiveItem('${id}')">⌑ В архив</button>`)
+  }
+  const readiness=readinessIssues(x),warn=readinessWarnings(x);
+  const auto=$('drawerDraftState');
+  if(auto&&!$('readinessPanel')){
+    auto.insertAdjacentHTML('afterend',`<section class="readiness-panel ${readiness.length?'not-ready':'ready'}" id="readinessPanel"><div><b>${readiness.length?'Не готов к публикации':'Готовность: обязательные пункты закрыты'}</b><small>${readiness.length?readiness.join(' · '):(warn.length?'Рекомендации: '+warn.join(' · '):'Можно передавать на согласование и публикацию.')}</small></div><span>${readiness.length?'!':'✓'}</span></section>`)
+  }
+  const comments=$('drawerBody')?.querySelector('.collab-section');
+  if(comments&&!$('linksBlock')){
+    const links=linksFor(id),targets=state.content.filter(v=>v.id!==id);
+    comments.insertAdjacentHTML('beforebegin',`<section class="links-block" id="linksBlock"><div class="collab-head"><div><div class="ey">CONTENT CHAIN</div><h3>Связанные материалы</h3></div><span class="badge">${links.length}</span></div>
+      <div class="linked-list">${links.map(l=>{const other=linkedOther(l,id);return other?`<div class="linked-row"><button onclick="openDrawer('${other.id}')"><b>${esc(other.title)}</b><small>${esc(l.relation_type)}</small></button><button class="link-remove" onclick="removeContentLink('${l.id}','${id}')">×</button></div>`:''}).join('')||'<div class="collab-empty">Связей пока нет. Объедините Reels, Stories и Telegram-пост в одну цепочку.</div>'}</div>
+      <div class="link-compose"><select class="input" id="linkTarget"><option value="">Выберите материал…</option>${targets.map(v=>`<option value="${v.id}">${esc(v.title)}</option>`).join('')}</select><select class="input" id="linkRelation"><option value="sequence">Продолжение</option><option value="support">Поддерживает</option><option value="adaptation">Адаптация</option><option value="campaign">Одна кампания</option></select><button class="primary" onclick="addContentLink('${id}')">Связать</button></div></section>`)
+  }
+}
+const __p3OpenDrawerBase=openDrawer;
+openDrawer=function(id){__p3OpenDrawerBase(id);augmentDrawerP3(id)};
+
+function builtInViews(){
+  return [
+    {id:'builtin:overdue',name:'Просрочено',filters:{kind:'overdue'}},
+    {id:'builtin:review',name:'Нужно согласовать',filters:{status:'review'}},
+    {id:'builtin:nomedia',name:'Без медиа',filters:{kind:'nomedia'}},
+    {id:'builtin:mine',name:'Мои задачи',filters:{assignee:currentAuthorLabel()}},
+    {id:'builtin:archive',name:'Архив',filters:{kind:'archive'}}
+  ]
+}
+function viewResults(filters={}){
+  if(filters.kind==='archive')return state.archivedContent;
+  return state.content.filter(x=>{
+    if(filters.kind==='overdue'&&!isOverdue(x))return false;
+    if(filters.kind==='nomedia'&&mediaCount(x)!==0)return false;
+    if(filters.status&&x.status!==filters.status)return false;
+    if(filters.channel&&x.channel!==filters.channel)return false;
+    if(filters.assignee&&!String(x.assignee||'').toLowerCase().includes(String(filters.assignee).toLowerCase()))return false;
+    if(filters.tag&&!(x.tags||[]).some(t=>t.toLowerCase()===String(filters.tag).toLowerCase()))return false;
+    return true
+  })
+}
+function openSavedViews(){
+  const all=[...builtInViews(),...(state.savedViews||[])];
+  openP2Modal('Представления','SAVED VIEWS',`<div class="views-grid">${all.map(v=>`<button class="view-card" onclick="openViewResults('${v.id}')"><b>${esc(v.name)}</b><small>${viewResults(v.filters||{}).length} материалов</small></button>`).join('')}</div>
+    <details class="new-view"><summary>＋ Сохранить новое представление</summary><div class="feature-form"><label>Название<input class="input" id="viewName" placeholder="Например: Telegram на согласовании"></label><div class="cols"><label>Статус<select class="input" id="viewStatus"><option value="">Любой</option>${Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join('')}</select></label><label>Канал<select class="input" id="viewChannel"><option value="">Любой</option><option value="Instagram">Instagram</option><option value="Telegram">Telegram</option></select></label></div><label>Теги<input class="input" id="viewTag" placeholder="Например: отзывы,"></label><label>Ответственный<input class="input" id="viewAssignee" placeholder="Например: Наташа"></label><button class="primary" onclick="saveCurrentView()">Сохранить</button></div></details>`)
+}
+function findView(id){return [...builtInViews(),...(state.savedViews||[])].find(v=>v.id===id)}
+function openViewResults(id){
+  const v=findView(id);if(!v)return;const list=viewResults(v.filters||{});
+  if(v.filters?.kind==='archive'){openArchive();return}
+  openP2Modal(v.name,'SAVED VIEW',`<div class="view-result-list">${list.map(x=>`<button onclick="closeP2Modal();openDrawer('${x.id}')"><div><b>${esc(x.title)}</b><small>${esc(x.format)} · ${esc(x.channel)} · ${STATUS[x.status]}</small></div>${tagHtml(x)}</button>`).join('')||'<div class="feature-empty"><b>Пусто</b><span>Под это представление сейчас ничего не попрадает.</span></div>'}</div>`)
+}
+async function saveCurrentView(){
+  const name=$('viewName')?.value.trim();if(!name)return toast('Введите название',true);
+  const filters={status:$('viewStatus')?.value||undefined,channel:$('viewChannel')?.value||undefined,tag:$('viewTag')?.value.trim()||undefined,assignee:$('viewAssignee')?.value.trim()||undefined};
+  Object.keys(filters).forEach(k=>filters[k]===undefined&&delete filters[k]);
+  const r=await sb.from('saved_views').insert({client_id:state.clientId,user_id:state.session?.user?.id,name,filters});
+  if(r.error)return toast(r.error.message,true);toast('Представление сохранена');await loadClientData();openSavedViews()
+}
+
+function openRecurringRules(){
+  openP2Modal('Повторяющиеся Рубрики','RECURRING CONTENT',`<div class="recurring-list">${(state.recurringRules||[]).map(r=>`<div class="recurring-row"><div><b>${esc(r.name)}</b><small>${r.frequency==='weekly'?'Еженедельно':'Ежемесячно'} · ${esc(r.format)} · ${esc(r.channel)} · ${String(r.time_of_day||'12:00').slice(0,5)}</small></div><button class="mini-btn accent" onclick="generateRecurring('${r.id}')">Создать ${r.occurrences}</button><button class="mini-btn" onclick="toggleRecurring('${r.id}',${!r.active})">${r.active?'Пауза':'Включить'}</button></div>`).join('')||'<div class="collab-empty">Рубрика пока нет</div>'}</div>
+    <details class="new-view"><summary>＋ Новая рубрика</summary><div class="feature-form"><label>Название<input class="input" id="rrName" placeholder="Например: Отзыв каждую пятницу"></label><label>Заголовок заготовки<input class="input" id="rrTitle" placeholder="Отзыв клиента"></label><label>Текст / шаблон<textarea class="textarea compact" id="rrCaption"></textarea></label><div class="cols"><label>Формат<select class="input" id="rrFormat"><option>Reels</option><option>Stories</option><option>Carousel</option><option>Post</option></select></label><label>Канал<select class="input" id="rrChannel"><option>Instagram</option><option>Telegram</option></select></label></div><div class="cols"><label>Повтор<select class="input" id="rrFrequency" onchange="renderRecurringScheduleFields()"><option value="weekly">Еженедельно</option><option value="monthly">Ежемесячно</option></select></label><label>Время<input class="input" id="rrTime" type="time" value="12:00"></label></div><div id="rrScheduleField"><label>День недели<select class="input" id="rrWeekday">${['Вс','Пн','Вт','Ср','Чт','Пт','Сб'].map((d,i)=>`<option value="${i}" ${i===5?'selected':''}>${d}</option>`).join('')}</select></label></div><div class="cols"><label>Ответственный<input class="input" id="rrAssignee"></label><label>Сколько заготовок<input class="input" id="rrOccurrences" type="number" min="1" max="12" value="4"></label></div><button class="primary" onclick="createRecurringRule()">Сохранить рубрику</button></div></details>`)
+}
+function renderRecurringScheduleFields(){
+  const f=$('rrFrequency')?.value,box=$('rrScheduleField');if(!box)return;
+  box.innerHTML=f==='monthly'?'<label>День месяца<input class="input" id="rrDayOfMonth" type="number" min="1" max="28" value="1"></label>':`<label>День недели<select class="input" id="rrWeekday">${['Вс','Пн','Вт','Ср','Чт','Пт','Сб'].map((d,i)=>`<option value="${i}" ${i===5?'selected':''}>${d}</option>`).join('')}</select></label>`
+}
+async function createRecurringRule(){
+  const name=$('rrName')?.value.trim(),title=$('rrTitle')?.value.trim();if(!name||!title)return toast('Заполните название рубрики и заголовок',true);
+  const frequency=$('rrFrequency').value;
+  const row={client_id:state.clientId,name,title_template:title,caption_template:$('rrCaption').value.trim()||null,format:$('rrFormat').value,channel:$('rrChannel').value,frequency,time_of_day:$('rrTime').value||'12:00',assignee:$('rrAssignee').value.trim()||null,occurrences:Math.max(1,Math.min(12,Number($('rrOccurrences').value)||4)),weekday:frequency==='weekly'?Number($('rrWeekday').value):null,day_of_month:frequency==='monthly'?Number($('rrDayOfMonth').value):null};
+  const r=await sb.from('recurring_content_rules').insert(row);if(r.error)return toast(r.error.message,true);toast('Рубрика сохранена');await loadClientData();openRecurringRules()
+}
+function recurringDates(rule){
+  const out=[],n=rule.occurrences||4,now=new Date(),time=String(rule.time_of_day||'12:00').split(':'),hh=Number(time[0])||12,mm=Number(time[1])||0;
+  if(rule.frequency==='weekly'){
+    let d=new Date(now);d.setHours(hh,mm,0,0);const target=Number(rule.weekday??1);let add=(target-d.getDay()+7)%7;if(add===0&&d<=now)add=7;d.setDate(d.getDate()+add);
+    for(let i=0;i<n;i++){const x=new Date(d);x.setDate(d.getDate()+i*7);out.push(x)}
+  }else{
+    let y=now.getFullYear(),m=now.getMonth(),day=Number(rule.day_of_month||1);
+    for(let guard=0;out.length<n&&guard<24;guard++,m++){const x=new Date(y,m,day,hh,mm,0,0);if(x>now)out.push(x)}
+  }
+  return out
+}
+async function generateRecurring(id){
+  const rule=state.recurringRules.find(r=>r.id===id);if(!rule)return;if(!rule.active)return toast('Сначала включите рубрику',true);
+  const rows=recurringDates(rule).map(d=>({client_id:state.clientId,title:rule.title_template,caption:rule.caption_template||'',format:rule.format,channel:rule.channel,status:'draft',scheduled_at:d.toISOString(),assignee:rule.assignee||null,tags:['рубрика',rule.name]})).filter(row=>!state.content.some(x=>x.title===row.title&&x.scheduled_at&&Math.abs(new Date(x.scheduled_at)-new Date(row.scheduled_at))<60000));
+  if(!rows.length)return toast('Заготовки на эти даты уже существуют',true);
+  const r=await sb.from('content_items').insert(rows);if(r.error)return toast(r.error.message,true);toast(`Создано заготовок: ${rows.length}`);await loadClientData();closeP2Modal();show('calendar')
+}
+async function toggleRecurring(id,active){
+  const r=await sb.from('recurring_content_rules').update({active}).eq('id',id);if(r.error)return toast(r.error.message,true);await loadClientData();openRecurringRules()
+}
+
+function renderPalette(q){
+  const query=q.toLowerCase().trim();
+  const list=state.content.filter(x=>[x.title,x.brief,x.caption,x.format,x.channel,STATUS[x.status],...(x.tags||[])].join(' ').toLowerCase().includes(query)).slice(0,12);
+  $('paletteResults').innerHTML=list.map(x=>`<div class="palette-item" onclick="closePalette();openDrawer('${x.id}')"><div><b>${esc(x.title)}</b><small>${esc(x.format)} · ${esc(x.channel)} · ${fmtDate(x.scheduled_at)} ${(x.tags||[]).slice(0,2).map(t=>'#'+t).join(' ')}</small></div>${statusBadge(x)}</div>`).join('')||'<div class="empty">Ничего не найдено</div>'
+}
+
+const __p3RenderDashboardBase=renderDashboard;
+renderDashboard=function(){
+  __p3RenderDashboardBase();
+  const d=$('dashboard');if(!d||$('opsTools'))return;
+  d.insertAdjacentHTML('beforeend',`<div class="card ops-tools" id="opsTools"><div class="ey">OPERATIONS</div><div class="section" style="margin-top:6px"><div><h2>Организация контента</h2><p>Представления, архив и регулярные рубрики.</p></div></div><div class="ops-grid"><button class="quick" onclick="openSavedViews()"><strong>◫ Представления</strong><span>Мои задачи, просрочено, без медиа и свои фильтры</span></button><button class="quick" onclick="openRecurringRules()"><strong>↻ Рубрики</strong><span>Создание серии контента по расписанию</span></button><button class="quick" onclick="openArchive()"><strong>⌑ Архив</strong><span>${state.archivedContent.length} материалов можно восстановить</span></button></div></div>`)
+}
+
+async function loadClientData(){
+  const [c,i,a,n,s,cm,pq,tp,ln,sv,rr]=await Promise.all([
+    sb.from('content_items').select('*').eq('client_id',state.clientId).order('scheduled_at',{ascending:true,nullsFirst:false}),
+    sb.from('client_integrations').select('*').eq('client_id',state.clientId).order('channel'),
+    sb.from('assets').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false}),
+    sb.from('analytics_daily').select('*').eq('client_id',state.clientId).order('day',{ascending:false}).limit(30),
+    sb.from('content_sync_events').select('id,content_item_id,event_type,source,actor_id,created_at,delivered_at,payload').eq('client_id',state.clientId).order('created_at',{ascending:false}).limit(200),
+    sb.from('content_comments').select('*').eq('client_id',state.clientId).order('created_at',{ascending:true}),
+    sb.from('publish_queue').select('*').eq('client_id',state.clientId).order('requested_at',{ascending:false}).limit(50),
+    sb.from('content_templates').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false}),
+    sb.from('content_links').select('*').eq('client_id',state.clientId).order('created_at',{ascending:true}),
+    sb.from('saved_views').select('*').eq('client_id',state.clientId).eq('user_id',state.session?.user?.id).order('created_at',{ascending:true}),
+    sb.from('recurring_content_rules').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false})
+  ]);
+  if(c.error)return toast(c.error.message,true);if(i.error)return toast(i.error.message,true);
+  const all=c.data||[];state.content=all.filter(x=>!x.archived_at);state.archivedContent=all.filter(x=>x.archived_at);
+  state.integrations=i.data||[];state.assets=a.error?[]:(a.data||[]);state.analytics=n.error?[]:(n.data||[]);state.syncEvents=s.error?[]:(s.data||[]);
+  state.comments=cm.error?[]:(cm.data||[]);state.publishQueue=pq.error?[]:(pq.data||[]);state.templates=tp.error?[]:(tp.data||[]);
+  state.contentLinks=ln.error?[]:(ln.data||[]);state.savedViews=sv.error?[]:(sv.data||[]);state.recurringRules=rr.error?[]:(rr.data||[]);
+  renderAll();ensurePackage2Shell();refreshTemplateSelect();updateNotifBadge()
+}
+function startRealtime(){
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null}if(!state.session||!state.clientId)return;
+  realtimeChannel=sb.channel('content-center-'+state.clientId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_items',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_sync_events',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_comments',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'publish_queue',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_templates',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_links',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'saved_views',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'recurring_content_rules',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .subscribe()
+}
 
