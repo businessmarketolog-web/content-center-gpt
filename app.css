@@ -274,3 +274,59 @@ h2{letter-spacing:-.025em}
   .mini-cal-grid{grid-template-columns:repeat(14,54px)}
   .month-day{min-height:104px;padding:8px}
 }
+
+
+/* MINI CALENDAR — COMPACT RESPONSIVE */
+.mini-cal-card{
+  width:min(720px,52%);
+  min-width:620px;
+  margin-right:auto;
+}
+.mini-cal-grid{
+  grid-template-columns:repeat(14,minmax(38px,1fr));
+}
+.mini-day{
+  min-width:38px;
+  height:62px;
+}
+@media(max-width:1180px){
+  .mini-cal-card{
+    width:100%;
+    min-width:0;
+  }
+  .mini-cal-grid{
+    grid-template-columns:repeat(14,minmax(44px,1fr));
+  }
+}
+@media(max-width:700px){
+  .mini-cal-card{
+    width:100%;
+    min-width:0;
+    padding:12px;
+  }
+  .mini-cal-head{
+    display:block;
+    margin-bottom:10px;
+  }
+  .mini-cal-legend{
+    margin-top:8px;
+    gap:8px;
+    flex-wrap:wrap;
+    overflow:visible;
+    white-space:normal;
+  }
+  .mini-cal-grid{
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:3px;
+    overflow:visible;
+  }
+  .mini-day{
+    min-width:0;
+    width:100%;
+    height:58px;
+    border-radius:9px;
+  }
+  .mini-weekday{font-size:6.5px}
+  .mini-day b{font-size:14px}
+  .mini-day small{right:5px;top:5px}
+}
