@@ -1481,3 +1481,51 @@ function startRealtime(){
     .subscribe()
 }
 
+
+
+/* OPERATIONS PACKAGE V4 */
+const PRIORITY_LABEL={low:'Низкий',normal:'Обычный',high:'Высокий',urgent:'Срочно'};
+const priorityBadge=x=>x.priority&&x.priority!=='normal'?`<span class="priority ${x.priority}">${PRIORITY_LABEL[x.priority]||x.priority}</span>`:'';
+function checklistValue(x){return {...{text:false,media:false,cover:false,date:false},...(x.approval_checklist||{})}}
+function checklistReady(x){
+ const c=checklistValue(x);const needCover=x.channel==='Instagram';
+ return Boolean(c.text&&c.media&&c.date&&(!needCover||c.cover))
+}
+async function saveChecklist(id,key,checked){
+ const x=itemById(id);if(!x)return;const c={...checklistValue(x),[key]:checked};
+ const r=await sb.from('content_items').update({approval_checklist:c}).eq('id',id);
+ if(r.error)return toast(r.error.message,true);await loadClientData();openDrawer(id)
+}
+function checklistBlock(x){
+ const c=checklistValue(x),rows=[['text','Текст проверен'],['media','Медиа проверено'],['cover','Обложка проверена'],['date','Дата и канал проверены']];
+ return `<section class="approval-check"><div class="p3-head"><b>Чек-лист согласования</b><span class="badge">${checklistReady(x)?'✓ готово':'проверка'}</span></div>${rows.map(([k,n])=>`<label><input type="checkbox" ${c[k]?'checked':''} onchange="saveChecklist('${x.id}','${k}',this.checked)"> <span>${n}</span></label>`).join('')}</section>`
+}
+const _v4drawer=openDrawer;openDrawer=function(id){_v4drawer(id);const x=itemById(id);if(!x)return;
+ const form=$('drawerBody')?.querySelector('.form');if(form&&!$('dPriority'))form.insertAdjacentHTML('beforeend',`<label>Приоритет<select class="input" id="dPriority"><option value="low" ${x.priority==='low'?'selected':''}>Низкий</option><option value="normal" ${!x.priority||x.priority==='normal'?'selected':''}>Обычный</option><option value="high" ${x.priority==='high'?'selected':''}>Высокий</option><option value="urgent" ${x.priority==='urgent'?'selected':''}>Срочно</option></select></label>`);
+ const actions=$('drawerBody')?.querySelector('.detail-actions');if(actions&&!$('v4Checklist'))actions.insertAdjacentHTML('beforebegin',`<div id="v4Checklist">${checklistBlock(x)}</div>`);
+};
+const _v4save=saveDrawer;saveDrawer=async function(){const id=state.selectedId,p=$('dPriority')?.value||'normal';await _v4save();if(id){const r=await sb.from('content_items').update({priority:p}).eq('id',id);if(!r.error){await loadClientData();openDrawer(id)}}};
+
+const _v4status=setStatus;setStatus=async function(id,s){const x=itemById(id);if(s==='approved'&&x&&!checklistReady(x)){openP2Modal('Согласование не завершено','APPROVAL CHECKLIST',`<div class="p3-check"><span>Отметьте пункты чек-листа перед переводом в «Готово».</span><button class="primary" onclick="closeP2Modal();openDrawer('${id}')">Открыть материал</button></div>`);return}return _v4status(id,s)};
+
+function bulkItemsHtml(){return state.content.map(x=>`<label class="bulk-row"><input type="checkbox" class="bulk-select" value="${x.id}"><div><b>${esc(x.title)}</b><small>${esc(x.format)} · ${esc(x.channel)} · ${STATUS[x.status]}</small></div>${priorityBadge(x)}</label>`).join('')}
+function openBulkActions(){openP2Modal('Массовые действия','BULK OPERATIONS',`<div class="bulk-toolbar"><button class="mini-btn" onclick="document.querySelectorAll('.bulk-select').forEach(x=>x.checked=true)">Выбрать все</button><select class="input" id="bulkStatus"><option value="">Статус не менять</option>${Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join('')}</select><input class="input" id="bulkAssignee" placeholder="Ответственный (не менять — пусто)"><button class="primary" onclick="applyBulk()">Применить</button><button class="ghost" onclick="archiveBulk()">В архив</button></div><div class="bulk-list">${bulkItemsHtml()}</div>`)}
+function selectedBulkIds(){return [...document.querySelectorAll('.bulk-select:checked')].map(x=>x.value)}
+async function applyBulk(){const ids=selectedBulkIds();if(!ids.length)return toast('Выберите материалы',true);const payload={},s=$('bulkStatus')?.value,a=$('bulkAssignee')?.value.trim();if(s)payload.status=s;if(a)payload.assignee=a;if(!Object.keys(payload).length)return toast('Выберите действие',true);
+ if(s==='approved'){const bad=ids.map(itemById).filter(x=>!checklistReady(x)||readinessIssues(x).length);if(bad.length)return toast(`Не готовы к одобрению: ${bad.length}`,true)}
+ const r=await sb.from('content_items').update(payload).in('id',ids);if(r.error)return toast(r.error.message,true);toast(`Обновлено: ${ids.length}`);closeP2Modal();await loadClientData()}
+async function archiveBulk(){const ids=selectedBulkIds();if(!ids.length)return toast('Выберите материалы',true);if(!confirm(`Архивировать ${ids.length} материалов?`))return;const r=await sb.from('content_items').update({archived_at:new Date().toISOString(),archived_by:state.session?.user?.id||null}).in('id',ids);if(r.error)return toast(r.error.message,true);closeP2Modal();await loadClientData();toast(`В архиве: ${ids.length}`)}
+
+function csvCell(v){const s=String(v??'').replaceAll('"','""');return `"${s}"`}
+function exportContentCsv(){
+ const head=['Заголовок','Формат','Канал','Статус','Дата','Ответственный','Дедлайн','Приоритет','Теги'];
+ const rows=state.content.map(x=>[x.title,x.format,x.channel,STATUS[x.status]||x.status,x.scheduled_at||'',x.assignee||'',x.due_at||'',PRIORITY_LABEL[x.priority]||x.priority,(x.tags||[]).join(', ')]);
+ const csv='\ufeff'+[head,...rows].map(r=>r.map(csvCell).join(';')).join('\n');
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=u;a.download=`content-plan-${currentClient()?.name||'client'}-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+ setTimeout(()=>URL.revokeObjectURL(u),1000);toast('Контент-план экспортирован')
+}
+function ensureV4(){const q=document.querySelector('.quick-grid');if(q&&!q.querySelector('.v4-bulk'))q.insertAdjacentHTML('beforeend',`<button class="quick v4-bulk" onclick="openBulkActions()"><strong>☑ Массово</strong><span>Статус, ответственный, архив</span></button><button class="quick" onclick="exportContentCsv()"><strong>⇩ Экспорт CSV</strong><span>Весь контент-план клиента</span></button>`)}
+const _v4render=renderAll;renderAll=function(){_v4render();setTimeout(ensureV4,0)};
+ensureV4();
+
