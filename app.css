@@ -589,109 +589,125 @@ h2{letter-spacing:-.025em}
 
 
 /* TYPOGRAPHY READABILITY PASS — WEB + MOBILE */
-html{font-size:16px}
+html{font-size:24px}
 body{
-  font-size:15.5px;
+  font-size:23.25px;
   line-height:1.5;
   text-rendering:optimizeLegibility;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
 }
-.top-title h1{font-size:30px;line-height:1.08}
-.section h2,.calendar-head h2{font-size:22px;line-height:1.2}
-.section p,.guide-hero p{font-size:12px;line-height:1.55}
-.ey{font-size:9px;letter-spacing:.12em}
-.nav{font-size:12px}
-.nav span:not(.ni):not(.count){font-size:10px}
-.nav .count{font-size:9px}
-.chip,.ghost,.primary,.icon-btn,.search-trigger,.mini-btn{font-size:11px}
-.select,.input,.textarea{font-size:14px}
-.content-title{font-size:14px;line-height:1.35}
-.content-meta{font-size:11px;line-height:1.45}
-.content-expand-inner,.detail-block,.drawer-body{font-size:13px;line-height:1.55}
-.task b{font-size:12px;line-height:1.45}
-.task p{font-size:11px;line-height:1.5}
-.asset-meta b{font-size:12px}
-.asset-meta small{font-size:10px}
-.int{font-size:12px}
-.ok,.need{font-size:11px}
-.metric small,.focus-label,.quick span,.work-block span,.work-block small{font-size:10px}
-.quick strong{font-size:12px}
-.brand-rule-label{font-size:10px}
-.brand-rule b{font-size:12px;line-height:1.45}
-.brand-rule p{font-size:10.5px;line-height:1.5}
-.month-weekday{font-size:9px}
-.month-day-head b{font-size:13px}
-.month-post span{font-size:10px}
-.month-posts>small{font-size:9px}
-.selected-day-item b{font-size:11px}
-.selected-day-item small{font-size:9px}
-.mini-cal-head p{font-size:10.5px}
-.mini-cal-legend{font-size:10px}
-.mini-weekday{font-size:8px}
-.mini-day b{font-size:16px}
-.guide-item summary b{font-size:13px}
-.guide-item summary small{font-size:10px;line-height:1.4}
-.guide-copy ol,.guide-copy p{font-size:11px;line-height:1.65}
-.guide-go{font-size:11px}
-.sync-node b{font-size:12px}
-.sync-node small{font-size:10px}
-.rules-grid p{font-size:10.5px;line-height:1.55}
-.guide-mobile-note{font-size:10.5px}
+.top-title h1{font-size:45px;line-height:1.08}
+.section h2,.calendar-head h2{font-size:33px;line-height:1.2}
+.section p,.guide-hero p{font-size:18px;line-height:1.55}
+.ey{font-size:13.5px;letter-spacing:.12em}
+.nav{font-size:18px}
+.nav span:not(.ni):not(.count){font-size:15px}
+.nav .count{font-size:13.5px}
+.chip,.ghost,.primary,.icon-btn,.search-trigger,.mini-btn{font-size:16.5px}
+.select,.input,.textarea{font-size:21px}
+.content-title{font-size:21px;line-height:1.35}
+.content-meta{font-size:16.5px;line-height:1.45}
+.content-expand-inner,.detail-block,.drawer-body{font-size:19.5px;line-height:1.55}
+.task b{font-size:18px;line-height:1.45}
+.task p{font-size:16.5px;line-height:1.5}
+.asset-meta b{font-size:18px}
+.asset-meta small{font-size:15px}
+.int{font-size:18px}
+.ok,.need{font-size:16.5px}
+.metric small,.focus-label,.quick span,.work-block span,.work-block small{font-size:15px}
+.quick strong{font-size:18px}
+.brand-rule-label{font-size:15px}
+.brand-rule b{font-size:18px;line-height:1.45}
+.brand-rule p{font-size:15.75px;line-height:1.5}
+.month-weekday{font-size:13.5px}
+.month-day-head b{font-size:19.5px}
+.month-post span{font-size:15px}
+.month-posts>small{font-size:13.5px}
+.selected-day-item b{font-size:16.5px}
+.selected-day-item small{font-size:13.5px}
+.mini-cal-head p{font-size:15.75px}
+.mini-cal-legend{font-size:15px}
+.mini-weekday{font-size:12px}
+.mini-day b{font-size:24px}
+.guide-item summary b{font-size:19.5px}
+.guide-item summary small{font-size:15px;line-height:1.4}
+.guide-copy ol,.guide-copy p{font-size:16.5px;line-height:1.65}
+.guide-go{font-size:16.5px}
+.sync-node b{font-size:18px}
+.sync-node small{font-size:15px}
+.rules-grid p{font-size:15.75px;line-height:1.55}
+.guide-mobile-note{font-size:15.75px}
 
 @media(max-width:900px){
-  body{font-size:15px}
-  .content-title{font-size:13.5px}
-  .section h2,.calendar-head h2{font-size:21px}
+  body{font-size:22.5px}
+  .content-title{font-size:20.25px}
+  .section h2,.calendar-head h2{font-size:31.5px}
 }
 
 @media(max-width:520px){
-  body{font-size:16px;line-height:1.5}
-  .top-title h1{font-size:28px;line-height:1.06}
-  .top-title .ey,.ey{font-size:9px}
-  .nav span:not(.ni):not(.count){font-size:9px!important}
-  .nav .count{font-size:8px!important}
-  .actions .primary{font-size:12px}
-  .select,.input,.textarea{font-size:16px!important;line-height:1.45}
-  .section h2,.calendar-head h2{font-size:20px}
-  .section p,.guide-hero p{font-size:12px}
-  .content-title{font-size:13px!important;line-height:1.42}
-  .content-meta{font-size:10.5px!important;line-height:1.5}
-  .content-expand-inner{font-size:12px;line-height:1.6}
-  .metric b{font-size:22px}
-  .metric small{font-size:9px}
-  .focus-num{font-size:23px}
-  .focus-label{font-size:9px}
-  .quick strong{font-size:11px}
-  .quick span{font-size:9px;line-height:1.35}
-  .work-block b{font-size:22px}
-  .work-block span,.work-block small{font-size:9.5px;line-height:1.4}
-  .brand-rule b{font-size:11px}
-  .brand-rule p{font-size:9.5px}
-  .task b{font-size:12px}
-  .task p{font-size:10px}
-  .asset-meta b{font-size:11px}
-  .asset-meta small{font-size:9px}
-  .int{font-size:11px}
-  .ok,.need{font-size:10px}
-  .chip,.ghost,.primary,.icon-btn,.search-trigger,.mini-btn{font-size:10.5px}
-  .month-weekday{font-size:8px!important}
-  .month-day-head b{font-size:11px!important}
-  .month-posts>small{font-size:7.5px!important}
-  .selected-day-head h3{font-size:16px!important}
-  .selected-day-item b{font-size:11px!important}
-  .selected-day-item small{font-size:9px!important}
-  .mini-cal-head h2{font-size:17px!important}
-  .mini-cal-head p{font-size:10px}
-  .mini-cal-legend{font-size:9px}
-  .mini-weekday{font-size:7px!important}
-  .mini-day b{font-size:15px!important}
-  .guide-hero h2{font-size:23px}
-  .guide-item summary b{font-size:12px}
-  .guide-item summary small{font-size:9px}
-  .guide-copy ol,.guide-copy p{font-size:10.5px}
-  .sync-node b{font-size:11px}
-  .sync-node small{font-size:9px}
-  .rules-grid p{font-size:10px}
-  .guide-mobile-note{font-size:10px}
+  body{font-size:24px;line-height:1.5}
+  .top-title h1{font-size:42px;line-height:1.06}
+  .top-title .ey,.ey{font-size:13.5px}
+  .nav span:not(.ni):not(.count){font-size:13.5px!important}
+  .nav .count{font-size:12px!important}
+  .actions .primary{font-size:18px}
+  .select,.input,.textarea{font-size:24px!important;line-height:1.45}
+  .section h2,.calendar-head h2{font-size:30px}
+  .section p,.guide-hero p{font-size:18px}
+  .content-title{font-size:19.5px!important;line-height:1.42}
+  .content-meta{font-size:15.75px!important;line-height:1.5}
+  .content-expand-inner{font-size:18px;line-height:1.6}
+  .metric b{font-size:33px}
+  .metric small{font-size:13.5px}
+  .focus-num{font-size:34.5px}
+  .focus-label{font-size:13.5px}
+  .quick strong{font-size:16.5px}
+  .quick span{font-size:13.5px;line-height:1.35}
+  .work-block b{font-size:33px}
+  .work-block span,.work-block small{font-size:14.25px;line-height:1.4}
+  .brand-rule b{font-size:16.5px}
+  .brand-rule p{font-size:14.25px}
+  .task b{font-size:18px}
+  .task p{font-size:15px}
+  .asset-meta b{font-size:16.5px}
+  .asset-meta small{font-size:13.5px}
+  .int{font-size:16.5px}
+  .ok,.need{font-size:15px}
+  .chip,.ghost,.primary,.icon-btn,.search-trigger,.mini-btn{font-size:15.75px}
+  .month-weekday{font-size:12px!important}
+  .month-day-head b{font-size:16.5px!important}
+  .month-posts>small{font-size:11.25px!important}
+  .selected-day-head h3{font-size:24px!important}
+  .selected-day-item b{font-size:16.5px!important}
+  .selected-day-item small{font-size:13.5px!important}
+  .mini-cal-head h2{font-size:25.5px!important}
+  .mini-cal-head p{font-size:15px}
+  .mini-cal-legend{font-size:13.5px}
+  .mini-weekday{font-size:10.5px!important}
+  .mini-day b{font-size:22.5px!important}
+  .guide-hero h2{font-size:34.5px}
+  .guide-item summary b{font-size:18px}
+  .guide-item summary small{font-size:13.5px}
+  .guide-copy ol,.guide-copy p{font-size:15.75px}
+  .sync-node b{font-size:16.5px}
+  .sync-node small{font-size:13.5px}
+  .rules-grid p{font-size:15px}
+  .guide-mobile-note{font-size:15px}
+}
+
+
+/* 1.5x TYPOGRAPHY LAYOUT SUPPORT */
+.chip,.ghost,.primary,.icon-btn,.search-trigger,.mini-btn{min-height:42px}
+.select,.input{min-height:44px}
+.textarea{line-height:1.55}
+.content-card-head,.task,.asset-meta,.brand-rule,.work-block,.quick,.metric{padding-top:14px;padding-bottom:14px}
+@media(max-width:520px){
+  .chip,.ghost,.primary,.icon-btn,.search-trigger,.mini-btn{min-height:46px}
+  .select,.input{min-height:48px}
+  .nav,.nav:nth-child(n+6){height:60px}
+  .side{height:calc(76px + env(safe-area-inset-bottom))}
+  main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  .month-day{min-height:82px}
+  .mini-day{height:62px}
 }
