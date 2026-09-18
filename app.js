@@ -978,3 +978,238 @@ if($('contentModal')){
   draftModalObserver.observe($('contentModal'),{attributes:true,attributeFilter:['class']})
 }
 
+
+
+/* PRODUCTIVITY PACKAGE V2 */
+state.templates=state.templates||[];
+state.publishQueue=state.publishQueue||[];
+
+function ensurePackage2Shell(){
+  const actions=document.querySelector('.actions');
+  if(actions&&!$('notifBtn')){
+    const b=document.createElement('button');b.id='notifBtn';b.className='icon-btn notif-btn';b.title='Уведомления';
+    b.innerHTML='🔔<span id="notifCount" class="notif-count">0</span>';b.onclick=openNotifications;
+    const logout=$('logoutBtn');actions.insertBefore(b,logout||null)
+  }
+  if(!$('p2Modal')){
+    document.body.insertAdjacentHTML('beforeend',`
+      <div class="p2-modal" id="p2Modal">
+        <div class="p2-dialog">
+          <div class="p2-head"><button class="mobile-back" type="button" onclick="closeP2Modal()">‹ <span>Назад</span></button><div><div class="ey" id="p2Ey">WORKSPACE</div><h2 id="p2Title">Действие</h2></div><button class="xbtn" onclick="closeP2Modal()">×</button></div>
+          <div class="p2-body" id="p2Body"></div>
+        </div>
+      </div>`)
+  }
+  ensureTemplateControls();updateNotifBadge()
+}
+function openP2Modal(title,ey,body){
+  ensurePackage2Shell();$('p2Title').textContent=title;$('p2Ey').textContent=ey||'WORKSPACE';$('p2Body').innerHTML=body;$('p2Modal').classList.add('on')
+}
+function closeP2Modal(){$('p2Modal')?.classList.remove('on')}
+function builtInTemplates(){
+  return [
+    {id:'builtin:hotel',name:'Reels · обзор отеля',format:'Reels',channel:'Instagram',title:'Обзор отеля',brief:'Короткий динамичный обзор: территория, номера, пляж, питание, кому подойдёт.',caption:'Хук → 3–5 сильных сторон → кому подойдёт → мягкий CTA.'},
+    {id:'builtin:review',name:'Stories · отзыв клиента',format:'Stories',channel:'Instagram',title:'Отзыв клиента',brief:'Доверие: маршрут/задача клиента → детали поездки → эмоция/отзыв → CTA.',caption:'История клиента в 3–4 сторис. Без перегруза, с акцентом на реальный опыт.'},
+    {id:'builtin:carousel',name:'Карусель · подборка',format:'Carousel',channel:'Instagram',title:'Подборка вариантов',brief:'Обложка → 3–5 вариантов → сравнение → вывод → CTA.',caption:'Короткий вводный текст, польза подборки и призыв сохранить.'},
+    {id:'builtin:telegram',name:'Telegram · полезный пост',format:'Post',channel:'Telegram',title:'Полезный пост',brief:'Факт/новость → что это значит → кому важно → действие.',caption:'Заголовок\n\nКороткое объяснение без воды.\n\nЧто делать дальше / CTA.'}
+  ]
+}
+function allTemplates(){return [...builtInTemplates(),...(state.templates||[])]}
+function ensureTemplateControls(){
+  const form=$('contentModal')?.querySelector('.form');if(!form||$('templateTools'))return;
+  const box=document.createElement('div');box.id='templateTools';box.className='template-tools';
+  box.innerHTML='<label>Шаблон<select class="input" id="fTemplate"><option value="">Без шаблона</option></select></label><button class="ghost" type="button" onclick="applyTemplateChoice()">Применить</button>';
+  form.insertBefore(box,form.firstChild);refreshTemplateSelect()
+}
+function refreshTemplateSelect(){
+  const sel=$('fTemplate');if(!sel)return;
+  const val=sel.value;sel.innerHTML='<option value="">Без шаблона</option>'+allTemplates().map(t=>'<option value="'+esc(t.id)+'">'+esc(t.name)+'</option>').join('');
+  if([...sel.options].some(o=>o.value===val))sel.value=val
+}
+function applyTemplateChoice(){
+  const id=$('fTemplate')?.value;if(!id)return;
+  const t=allTemplates().find(x=>x.id===id);if(!t)return;
+  $('fFormat').value=t.format||'Reels';$('fChannel').value=t.channel||'Instagram';
+  if(t.title)$('fTitle').value=t.title;if(t.caption)$('fCaption').value=t.caption;
+  if(Array.isArray(t.media_urls)&&t.media_urls.length)$('fMedia').value=t.media_urls.join('\n');
+  saveNewLocalDraft();toast('Шаблон применён')
+}
+async function saveAsTemplate(id){
+  const x=itemById(id);if(!x)return;const name=prompt('Название шаблона',x.title);if(!name?.trim())return;
+  const r=await sb.from('content_templates').insert({client_id:state.clientId,name:name.trim(),format:x.format,channel:x.channel,title:x.title,brief:x.brief,caption:x.caption,media_urls:x.media_urls||[]});
+  if(r.error)return toast(r.error.message,true);toast('Шаблон сохранён');await loadClientData();openDrawer(id)
+}
+async function duplicateItem(id){
+  const x=itemById(id);if(!x)return;
+  const r=await sb.from('content_items').insert({client_id:state.clientId,title:x.title+' — копия',format:x.format,channel:x.channel,status:'draft',
+    scheduled_at:null,caption:x.caption,brief:x.brief,media_urls:x.media_urls||[],assignee:x.assignee||null,due_at:null}).select('id').single();
+  if(r.error)return toast(r.error.message,true);toast('Создана копия материала');await loadClientData();openDrawer(r.data.id)
+}
+
+function buildNotifications(){
+  const out=[],now=new Date(),day=86400000;
+  state.content.forEach(x=>{
+    if(isOverdue(x))out.push({kind:'danger',id:x.id,title:'Просрочен дедлайн',text:x.title+' · '+dueLabel(x.due_at)});
+    if(x.status==='review')out.push({kind:'review',id:x.id,title:'Ждёт согласования',text:x.title});
+    if(['review','approved','scheduled'].includes(x.status)&&mediaCount(x)===0)out.push({kind:'warn',id:x.id,title:'Нет медиа',text:x.title});
+    if(x.scheduled_at&&['approved','scheduled'].includes(x.status)){
+      const dt=new Date(x.scheduled_at)-now;if(dt>=0&&dt<=day)out.push({kind:'info',id:x.id,title:'Публикация в ближайшие 24 часа',text:x.title+' · '+fmtDate(x.scheduled_at)})
+    }
+    if(x.status==='failed')out.push({kind:'danger',id:x.id,title:'Ошибка публикации',text:x.title})
+  });
+  (state.publishQueue||[]).filter(q=>q.status==='failed').forEach(q=>{
+    const x=itemById(q.content_item_id);out.push({kind:'danger',id:q.content_item_id,title:'Сбой в очереди публикации',text:(x?.title||'Материал')+(q.error?' · '+q.error:'')})
+  });
+  const seen=new Set();return out.filter(n=>{const k=n.title+'|'+n.id;if(seen.has(k))return false;seen.add(k);return true})
+}
+function updateNotifBadge(){
+  const n=buildNotifications().length,c=$('notifCount');if(c){c.textContent=n>99?'99+':String(n);c.classList.toggle('zero',n===0)}
+}
+function openNotifications(){
+  const list=buildNotifications();
+  openP2Modal('Уведомления','ACTION CENTER',list.length?'<div class="notification-list">'+list.map(n=>`<button class="notification-item ${n.kind}" onclick="closeP2Modal();openDrawer('${n.id}')"><span class="notification-dot"></span><div><b>${esc(n.title)}</b><small>${esc(n.text)}</small></div><i>›</i></button>`).join('')+'</div>':'<div class="feature-empty"><b>Всё спокойно</b><span>Нет просроченных задач, ошибок и материалов, требующих внимания.</span></div>')
+}
+
+let calendarDraggedId=null,calendarHoldTimer=null;
+function startCalendarDrag(e,id){calendarDraggedId=id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',id)}
+function allowCalendarDrop(e){e.preventDefault();e.currentTarget.classList.add('calendar-drop')}
+function leaveCalendarDrop(e){e.currentTarget.classList.remove('calendar-drop')}
+async function dropCalendarDay(e,dateIso){
+  e.preventDefault();e.stopPropagation();e.currentTarget.classList.remove('calendar-drop');
+  const id=e.dataTransfer.getData('text/plain')||calendarDraggedId;calendarDraggedId=null;if(!id)return;
+  await moveContentToDate(id,dateIso)
+}
+async function moveContentToDate(id,dateIso){
+  const x=itemById(id);if(!x)return;
+  const target=new Date(dateIso),old=x.scheduled_at?new Date(x.scheduled_at):null;
+  target.setHours(old?old.getHours():12,old?old.getMinutes():0,0,0);
+  const r=await sb.from('content_items').update({scheduled_at:target.toISOString()}).eq('id',id);
+  if(r.error)return toast(r.error.message,true);toast('Дата перенесена: '+fmtDate(target));await loadClientData();renderCalendar()
+}
+function calendarPointerDown(e,id){
+  if(!window.matchMedia('(max-width:520px)').matches)return;const el=e.currentTarget;clearTimeout(calendarHoldTimer);
+  calendarHoldTimer=setTimeout(()=>{el.dataset.held='1';openMoveDate(id)},650)
+}
+function calendarPointerEnd(){clearTimeout(calendarHoldTimer)}
+function calendarItemClick(e,id){
+  e.stopPropagation();const el=e.currentTarget;if(el.dataset.held==='1'){delete el.dataset.held;return}openDrawer(id)
+}
+function openMoveDate(id){
+  const x=itemById(id);if(!x)return;const value=x.scheduled_at?new Date(x.scheduled_at).toISOString().slice(0,10):new Date().toISOString().slice(0,10);
+  openP2Modal('Перенести публикацию','CALENDAR',`<div class="feature-form"><p>${esc(x.title)}</p><label>Новая дата<input class="input" id="moveDateInput" type="date" value="${value}"></label><button class="primary" onclick="confirmMoveDate('${id}')">Перенести</button></div>`)
+}
+async function confirmMoveDate(id){const v=$('moveDateInput')?.value;if(!v)return toast('Выберите дату',true);closeP2Modal();await moveContentToDate(id,new Date(v+'T12:00:00').toISOString())}
+function renderCalendar(){
+  const cursor=state.calendarCursor,cells=monthCells(cursor),today=new Date(),month=cursor.getMonth(),year=cursor.getFullYear();
+  const channelItems=state.content.filter(x=>state.calendarChannel==='all'||x.channel===state.calendarChannel);
+  const selected=state.calendarSelected?new Date(state.calendarSelected):today;
+  const selectedItems=channelItems.filter(x=>x.scheduled_at&&sameDay(x.scheduled_at,selected));
+  $('calendar').innerHTML=`
+    <div class="calendar-head"><div><div class="ey">CONTENT CALENDAR</div><h2>${new Intl.DateTimeFormat('ru-RU',{month:'long',year:'numeric'}).format(cursor)}</h2></div>
+      <div class="calendar-controls"><button class="chip" onclick="shiftCalendar(-1)">←</button><button class="chip" onclick="calendarToday()">Сегодня</button><button class="chip" onclick="shiftCalendar(1)">→</button></div></div>
+    <div class="calendar-legend"><button class="legend-filter ${state.calendarChannel==='all'?'on':''}" onclick="setCalendarChannel('all')"><span class="legend-both"><i class="channel-dot instagram"></i><i class="channel-dot telegram"></i></span>Все каналы</button>
+      <button class="legend-filter ${state.calendarChannel==='Instagram'?'on':''}" onclick="setCalendarChannel('Instagram')"><i class="channel-dot instagram"></i>Instagram</button>
+      <button class="legend-filter ${state.calendarChannel==='Telegram'?'on':''}" onclick="setCalendarChannel('Telegram')"><i class="channel-dot telegram"></i>Telegram</button><span class="legend-note">На web перетащите публикацию на другую дату</span></div>
+    <div class="month-calendar">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(x=>`<div class="month-weekday">${x}</div>`).join('')}
+      ${cells.map(d=>{const items=channelItems.filter(x=>x.scheduled_at&&sameDay(x.scheduled_at,d)),outside=d.getMonth()!==month,isToday=sameDay(today,d),isSelected=sameDay(selected,d);
+        return `<div class="month-day ${outside?'outside':''} ${isToday?'today':''} ${isSelected?'selected':''}" onclick="selectCalendarDay('${d.toISOString()}')" ondragover="allowCalendarDrop(event)" ondragleave="leaveCalendarDrop(event)" ondrop="dropCalendarDay(event,'${d.toISOString()}')">
+          <div class="month-day-head"><b>${d.getDate()}</b>${isToday?'<span>сегодня</span>':''}<button title="Добавить материал" onclick="event.stopPropagation();openAdd('${d.toISOString()}')">＋</button></div>
+          <div class="month-posts">${items.slice(0,2).map(x=>`<button class="month-post" draggable="true" ondragstart="startCalendarDrag(event,'${x.id}')" onpointerdown="calendarPointerDown(event,'${x.id}')" onpointerup="calendarPointerEnd(event)" onpointercancel="calendarPointerEnd(event)" onclick="calendarItemClick(event,'${x.id}')">${channelDot(x.channel)}<span>${esc(x.title)}</span></button>`).join('')}${items.length>2?`<small>+ ещё ${items.length-2}</small>`:''}</div></div>`}).join('')}</div>
+    <div class="selected-day-panel card"><div class="selected-day-head"><div><div class="ey">ВЫБРАННЫЙ ДЕНЬ</div><h3>${new Intl.DateTimeFormat('ru-RU',{weekday:'long',day:'numeric',month:'long'}).format(selected)}</h3></div><button class="primary" onclick="openAdd('${selected.toISOString()}')">＋ Материал</button></div>
+      <div class="selected-day-list">${selectedItems.length?selectedItems.map(x=>`<div class="selected-day-item" onpointerdown="calendarPointerDown(event,'${x.id}')" onpointerup="calendarPointerEnd(event)" onclick="calendarItemClick(event,'${x.id}')">${channelDot(x.channel)}<div><b>${esc(x.title)}</b><small>${esc(x.format)} · ${STATUS[x.status]} · ${fmtDate(x.scheduled_at)}</small></div><button class="move-date-btn" onclick="event.stopPropagation();openMoveDate('${x.id}')">Перенести</button></div>`).join(''):'<div class="empty compact-empty">На этот день публикаций нет.</div>'}</div></div>
+    <div class="section"><div><h2>Материалы месяца</h2><p>Открывайте карточку для редактирования и согласования.</p></div><button class="chip" onclick="openPalette()">⌕ Поиск</button></div>
+    <div class="content-list">${channelItems.filter(x=>x.scheduled_at&&new Date(x.scheduled_at).getMonth()===month&&new Date(x.scheduled_at).getFullYear()===year).map(x=>contentCard(x)).join('')||'<div class="card empty">В этом месяце пока нет материалов</div>'}</div>`
+}
+
+function queueStatus(q){return {queued:'В очереди',processing:'Отправляется',published:'Опубликовано',failed:'Ошибка',cancelled:'Отменено'}[q.status]||q.status}
+async function publishItem(id){
+  const x=itemById(id);if(!x)return;if(!confirm(`Опубликовать «${x.title}» сейчас?`))return;toast('Отправляю в публикацию…');
+  try{
+    const s=(await sb.auth.getSession()).data.session;
+    const r=await fetch(SUPABASE_URL+'/functions/v1/publish-content',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+s.access_token},body:JSON.stringify({content_item_id:id})});
+    const b=await r.json();if(!r.ok)throw new Error(b.error||'Ошибка публикации');toast('Материал опубликован');await loadClientData();if(state.selectedId===id)openDrawer(id)
+  }catch(e){toast(e.message||'Ошибка публикации',true);await loadClientData()}
+}
+async function retryPublish(contentId){const x=itemById(contentId);if(!x)return;await publishItem(contentId)}
+function renderPublishing(){
+  const list=state.content.filter(x=>['approved','scheduled','failed','published'].includes(x.status)),queue=(state.publishQueue||[]).slice(0,30);
+  $('publishing').innerHTML=`
+    <div class="section"><div><h2>Публикации</h2><p>Готовый контент и технический журнал отправки в соцсети.</p></div><span class="badge">${list.filter(x=>x.status!=='published').length} в очереди</span></div>
+    <div class="content-list">${list.map(x=>`<div class="content-card"><div class="content-card-head" onclick="openDrawer('${x.id}')"><div><div class="content-title">${esc(x.title)}</div>${metaLine(x)}</div><div class="content-card-actions">${statusBadge(x)}${['approved','scheduled','failed'].includes(x.status)?`<button class="mini-btn accent" onclick="event.stopPropagation();publishItem('${x.id}')">${x.status==='failed'?'Повторить':'Опубликовать'}</button>`:''}</div></div></div>`).join('')||'<div class="card empty">Нет материалов для публикации</div>'}</div>
+    <div class="section"><div><h2>Журнал публикаций</h2><p>Последние попытки отправки через Supabase → Composio → соцсеть.</p></div><span class="badge">${queue.length}</span></div>
+    <div class="publish-log">${queue.length?queue.map(q=>{const x=itemById(q.content_item_id);return `<div class="publish-log-row ${q.status}"><div><b>${esc(x?.title||'Материал')}</b><small>${esc(q.channel||x?.channel||'')} · ${fmtDate(q.requested_at)}</small></div><div class="publish-log-result"><span>${esc(queueStatus(q))}</span>${q.error?`<small title="${esc(q.error)}">${esc(q.error)}</small>`:''}</div>${q.status==='failed'?`<button class="mini-btn accent" onclick="retryPublish('${q.content_item_id}')">↻ Retry</button>`:''}</div>`}).join(''):'<div class="card empty">Журнал пока пуст.</div>'}</div>`
+}
+
+const AI_ACTIONS={
+ improve:'Улучши текст: сделай его яснее, сильнее и естественнее, сохрани факты и тон бренда.',
+ shorter:'Сократи текст примерно на 30–40%, сохрани ключевой смысл и CTA.',
+ cta:'Предложи 5 небанальных CTA без давления и навязчивой продажи.',
+ telegram:'Адаптируй этот материал для Telegram: сделай структуру удобной для чтения и не копируй Instagram-механику буквально.',
+ hashtags:'Подбери релевантные хештеги. Не используй спамные и слишком общие теги.',
+ stories:'На основе материала создай сценарий из 3–4 Stories: хук, раскрытие, доказательство/деталь, CTA.'
+};
+function aiPromptFor(id,action){
+  const x=itemById(id),instruction=AI_ACTIONS[action];if(!x||!instruction)return '';
+  return `Работаем только с клиентом ${currentClient()?.name}. Не смешивай данные других клиентов.\nЗадача: ${instruction}\nБренд-правила: ${JSON.stringify(currentClient()?.brand_rules||{})}\nМатериал: ${JSON.stringify({title:x.title,brief:x.brief,caption:x.caption,format:x.format,channel:x.channel})}\nВерни только готовый вариант и коротко перечисли, что изменил.`
+}
+function runAiAction(id,action){
+  const p=aiPromptFor(id,action);if(!p)return;navigator.clipboard.writeText(p).then(()=>toast('AI-команда скопирована — вставьте её в ChatGPT')).catch(()=>toast('Не удалось скопировать команду',true))
+}
+function augmentDrawerP2(id){
+  const x=itemById(id);if(!x)return;
+  const actions=$('drawerBody')?.querySelector('.detail-actions');
+  if(actions&&!actions.querySelector('.p2-duplicate')){
+    actions.insertAdjacentHTML('beforeend',`<button class="ghost p2-duplicate" onclick="duplicateItem('${id}')">⧉ Дублировать</button><button class="ghost" onclick="saveAsTemplate('${id}')">▧ В шаблоны</button>`)
+  }
+  const comments=$('drawerBody')?.querySelector('.collab-section');
+  if(comments&&!$('aiBlock')){
+    comments.insertAdjacentHTML('beforebegin',`<section class="ai-block" id="aiBlock"><div class="collab-head"><div><div class="ey">AI ASSISTANT</div><h3>Помощник по материалу</h3></div><span class="badge">ChatGPT</span></div><div class="ai-actions">
+      <button onclick="runAiAction('${id}','improve')">Улучшить текст</button><button onclick="runAiAction('${id}','shorter')">Сократить</button><button onclick="runAiAction('${id}','cta')">CTA</button><button onclick="runAiAction('${id}','telegram')">Версия для Telegram</button><button onclick="runAiAction('${id}','hashtags')">Хештеги</button><button onclick="runAiAction('${id}','stories')">Stories</button></div><p>Команда учитывает выбранного клиента и его бренд-правила. Результат не перезаписывает исходник автоматически.</p></section>`)
+  }
+}
+const __p2OpenDrawerBase=openDrawer;
+openDrawer=function(id){__p2OpenDrawerBase(id);augmentDrawerP2(id)};
+
+function renderHistoryEvent(ev){
+  const canRestore=ev.event_type==='updated'&&ev.payload?.before;
+  return `<div class="history-event"><div><b>${esc(historySummary(ev))}</b><small>${esc(historyActor(ev))} · ${fmtDate(ev.created_at)}</small></div><div class="history-actions"><span class="history-kind">${ev.event_type==='created'?'создано':'изменено'}</span>${canRestore?`<button class="mini-btn" onclick="restoreHistoryVersion('${ev.id}')">↶ Восстановить</button>`:''}</div></div>`
+}
+async function restoreHistoryVersion(eventId){
+  const ev=state.syncEvents.find(x=>x.id===eventId),b=ev?.payload?.before;if(!ev||!b)return toast('Эта версия недоступна для восстановления',true);
+  const x=itemById(ev.content_item_id);if(!x)return;
+  if(!confirm('Восстановить состояние материала до этого изменения? Текущее состояние останется в истории.'))return;
+  const payload={};
+  ['title','format','channel','status','scheduled_at','caption','brief','assignee','due_at'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(b,k))payload[k]=b[k]});
+  if(Array.isArray(b.media_urls))payload.media_urls=b.media_urls;
+  const r=await sb.from('content_items').update(payload).eq('id',x.id);if(r.error)return toast(r.error.message,true);
+  clearItemDraft(x.id);toast('Предыдущая версия восстановлена');await loadClientData();openDrawer(x.id)
+}
+
+async function loadClientData(){
+  const [c,i,a,n,s,cm,pq,tp]=await Promise.all([
+    sb.from('content_items').select('*').eq('client_id',state.clientId).order('scheduled_at',{ascending:true,nullsFirst:false}),
+    sb.from('client_integrations').select('*').eq('client_id',state.clientId).order('channel'),
+    sb.from('assets').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false}),
+    sb.from('analytics_daily').select('*').eq('client_id',state.clientId).order('day',{ascending:false}).limit(30),
+    sb.from('content_sync_events').select('id,content_item_id,event_type,source,actor_id,created_at,delivered_at,payload').eq('client_id',state.clientId).order('created_at',{ascending:false}).limit(160),
+    sb.from('content_comments').select('*').eq('client_id',state.clientId).order('created_at',{ascending:true}),
+    sb.from('publish_queue').select('*').eq('client_id',state.clientId).order('requested_at',{ascending:false}).limit(50),
+    sb.from('content_templates').select('*').eq('client_id',state.clientId).order('created_at',{ascending:false})
+  ]);
+  if(c.error)return toast(c.error.message,true);if(i.error)return toast(i.error.message,true);
+  state.content=c.data||[];state.integrations=i.data||[];state.assets=a.error?[]:(a.data||[]);state.analytics=n.error?[]:(n.data||[]);
+  state.syncEvents=s.error?[]:(s.data||[]);state.comments=cm.error?[]:(cm.data||[]);state.publishQueue=pq.error?[]:(pq.data||[]);state.templates=tp.error?[]:(tp.data||[]);
+  renderAll();ensurePackage2Shell();refreshTemplateSelect();updateNotifBadge()
+}
+function startRealtime(){
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null}if(!state.session||!state.clientId)return;
+  realtimeChannel=sb.channel('content-center-'+state.clientId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_items',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_sync_events',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_comments',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'publish_queue',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .on('postgres_changes',{event:'*',schema:'public',table:'content_templates',filter:`client_id=eq.${state.clientId}`},scheduleRealtimeReload)
+    .subscribe()
+}
+ensurePackage2Shell();
+
