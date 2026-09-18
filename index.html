@@ -75,7 +75,15 @@
         <label>Дата<input class="input" id="fDate" type="datetime-local"></label>
       </div>
       <label>Текст<textarea class="textarea" id="fCaption" placeholder="Текст публикации"></textarea></label>
-      <label>Media URL<textarea class="textarea compact" id="fMedia" placeholder="По одному публичному HTTPS URL на строку"></textarea></label>
+      <label>Фото
+        <div class="upload-zone" id="photoDrop">
+          <input id="fPhotos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+          <div class="upload-icon">＋</div>
+          <div><b>Добавить фото</b><span>Нажмите или перетащите сюда изображения · JPG, PNG, WEBP · до 10 файлов</span></div>
+        </div>
+        <div class="photo-preview-grid" id="photoPreview"></div>
+      </label>
+      <label>Ссылка на готовое медиа <span class="optional">необязательно</span><textarea class="textarea compact" id="fMedia" placeholder="Если файл уже где-то размещён — по одному HTTPS URL на строку"></textarea></label>
     </div>
     <div class="dialog-actions"><button class="ghost" id="cancelAdd2">Отмена</button><button class="primary" id="saveAdd">Сохранить</button></div>
   </div>
