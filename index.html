@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#06171b" />
 <title>Content Center</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.js"></script>
-<link rel="stylesheet" href="app.css?v=20260919-operations4">
+<link rel="stylesheet" href="app.css?v=20260919-operations3">
 </head>
 <body>
 <div class="noise"></div>
@@ -22,7 +22,7 @@
       <input class="input input-xl" id="setupCode" type="password" autocomplete="current-password" placeholder="Код доступа владельца">
       <button class="primary primary-xl" id="claimBtn">Войти в кабинет</button>
     </div>
-    <div class="security-note">Код не хранится в GitHub и используется только для подтверждения доступа владельца.</div>
+    <div class="security-note">Код не хранится в GitHub. Защита от перебора включена: после серии неверных попыток вход временно блокируется.</div>
   </div>
 </div>
 
@@ -136,5 +136,5 @@
   </div>
 </div>
 
-<script src="app.js?v=20260919-operations4"></script>
+<script src="app.js?v=20260919-security4"></script>
 </body></html>
