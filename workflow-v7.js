@@ -152,3 +152,41 @@
   renderNav();
   renderTodayV7();
 })();
+
+/* DIRECT MEDIA UPLOAD V7 */
+(function(){
+  previewPendingPhotos=function(){
+    const box=$('photoPreview');if(!box)return;
+    box.innerHTML=state.pendingFiles.map((f,i)=>{
+      const u=URL.createObjectURL(f);
+      const preview=f.type.startsWith('video/')?'<video src="'+u+'" muted playsinline></video>':'<img src="'+u+'" alt="">';
+      return '<div class="photo-preview">'+preview+'<button type="button" onclick="removePendingPhoto('+i+')">Удалить</button><span>'+esc(f.name)+'</span></div>';
+    }).join('');
+  };
+  addPhotoFiles=function(files){
+    const incoming=[...files].filter(f=>f.type.startsWith('image/')||f.type.startsWith('video/'));
+    const merged=[...state.pendingFiles];
+    const tooLarge=[];
+    incoming.forEach(f=>{
+      const max=f.type.startsWith('video/')?52428800:15728640;
+      if(f.size>max){tooLarge.push(f.name);return}
+      if(!merged.some(x=>x.name===f.name&&x.size===f.size&&x.lastModified===f.lastModified))merged.push(f);
+    });
+    state.pendingFiles=merged.slice(0,10);
+    if(tooLarge.length)toast('Некоторые файлы слишком большие и не добавлены',true);
+    previewPendingPhotos();
+  };
+  uploadPendingPhotos=async function(){
+    const urls=[],assets=[];
+    for(const file of state.pendingFiles){
+      const safe=file.name.toLowerCase().replace(/[^a-z0-9а-яё._-]+/gi,'-').replace(/^-+|-+$/g,'');
+      const path=state.clientId+'/'+Date.now()+'-'+crypto.randomUUID().slice(0,8)+'-'+safe;
+      const up=await sb.storage.from('content-assets').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});
+      if(up.error)throw up.error;
+      const pub=sb.storage.from('content-assets').getPublicUrl(path);
+      const url=pub.data.publicUrl;urls.push(url);
+      assets.push({client_id:state.clientId,name:file.name,kind:file.type.startsWith('video/')?'video':'image',url,metadata:{storage_path:path,size:file.size,mime:file.type}});
+    }
+    return {urls,assets};
+  };
+})();

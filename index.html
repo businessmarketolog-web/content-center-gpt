@@ -15,7 +15,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0/dist/umd/supabase.js"></script>
 <link rel="stylesheet" href="app.css?v=20260919-management6">
 <link rel="stylesheet" href="enhancements-v6.css?v=20260919-v6b">
-<link rel="stylesheet" href="workflow-v7.css?v=20260919-v7">
+<link rel="stylesheet" href="workflow-v7.css?v=20260919-v7b">
 </head>
 <body>
 <div class="noise"></div>
@@ -90,11 +90,11 @@
         <label>Дедлайн подготовки<input class="input" id="fDue" type="datetime-local"></label>
       </div>
       <label>Текст<textarea class="textarea" id="fCaption" placeholder="Текст публикации"></textarea></label>
-      <label>Фото
+      <label>Фото или видео
         <div class="upload-zone" id="photoDrop">
-          <input id="fPhotos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+          <input id="fPhotos" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" multiple hidden>
           <div class="upload-icon">＋</div>
-          <div><b>Добавить фото</b><span>Нажмите или перетащите сюда изображения · JPG, PNG, WEBP · до 10 файлов</span></div>
+          <div><b>Добавить фото или видео</b><span>Нажмите или перетащите файлы · фото до 15 МБ, видео до 50 МБ · до 10 файлов</span></div>
         </div>
         <div class="photo-preview-grid" id="photoPreview"></div>
       </label>
@@ -148,5 +148,5 @@
 
 <script src="app.js?v=20260919-management6"></script>
 <script src="enhancements-v6.js?v=20260919-v6b"></script>
-<script src="workflow-v7.js?v=20260919-v7"></script>
+<script src="workflow-v7.js?v=20260919-v7b"></script>
 </body></html>
