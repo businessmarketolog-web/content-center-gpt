@@ -1,5 +1,5 @@
-const CACHE='content-center-v9-20260919-owner1';
-const CORE=['./','./index.html','./app.css?v=20260919-management6','./app.js?v=20260919-management6','./enhancements-v6.css?v=20260919-v6b','./enhancements-v6.js?v=20260919-v6b','./workflow-v7.css?v=20260919-v7b','./workflow-v7.js?v=20260919-v7b','./ideas-v8.css?v=20260919-ideas1','./ideas-v8.js?v=20260919-ideas1','./clients-v9.css?v=20260919-owner1','./clients-v9.js?v=20260919-owner1','./approval.html','./manifest.webmanifest?v=20260919-pwa6','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png'];
+const CACHE='content-center-v10-20260922-authfix1';
+const CORE=['./','./index.html','./app.css?v=20260919-management6','./app.js?v=20260922-authfix1','./enhancements-v6.css?v=20260919-v6b','./enhancements-v6.js?v=20260919-v6b','./workflow-v7.css?v=20260919-v7b','./workflow-v7.js?v=20260919-v7b','./ideas-v8.css?v=20260919-ideas1','./ideas-v8.js?v=20260919-ideas1','./clients-v9.css?v=20260919-owner1','./clients-v9.js?v=20260919-owner1','./approval.html','./manifest.webmanifest?v=20260919-pwa6','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{

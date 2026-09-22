@@ -110,9 +110,17 @@ async function claim(){
       };
       throw new Error(messages[b.error]||'Ошибка входа');
     }
-    const verified=await sb.auth.verifyOtp({token_hash:b.token_hash,type:'magiclink'});
-    if(verified.error)throw verified.error;
-    state.session=verified.data.session;
+    let nextSession=null;
+    if(typeof b.access_token==='string'&&typeof b.refresh_token==='string'){
+      const signed=await sb.auth.setSession({access_token:b.access_token,refresh_token:b.refresh_token});
+      if(signed.error||!signed.data.session)throw signed.error||new Error('Не удалось создать сессию');
+      nextSession=signed.data.session;
+    }else if(typeof b.token_hash==='string'){
+      const verified=await sb.auth.verifyOtp({token_hash:b.token_hash,type:'magiclink'});
+      if(verified.error||!verified.data.session)throw verified.error||new Error('Не удалось подтвердить вход');
+      nextSession=verified.data.session;
+    }else throw new Error('Некорректный ответ сервера входа');
+    state.session=nextSession;
     $('authLayer').classList.remove('on');
     toast('Вход выполнен');
     await loadClients();
