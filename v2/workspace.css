@@ -1,0 +1,49 @@
+/* Content Center V2 — opt-in visual layer; existing app and owner login untouched. */
+html.cc-v2 body{font-size:16px;background:#101419;color:#f1f4f7}
+html.cc-v2 .app{grid-template-columns:230px minmax(0,1fr)}
+html.cc-v2 .side{background:rgba(17,21,26,.94);border-right:1px solid rgba(255,255,255,.1)}
+html.cc-v2 .nav{color:#bac2ca}
+html.cc-v2 .nav.on{background:#243138;color:#f3fafc;box-shadow:inset 0 0 0 1px #41636c}
+html.cc-v2 #dashboard{max-width:1540px;margin:0 auto}
+.ccv2-shell{padding:24px 4px 64px;color:#f1f4f7;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.ccv2-shell *{box-sizing:border-box}
+.ccv2-header{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin:0 0 24px;padding-bottom:22px;border-bottom:1px solid rgba(230,239,246,.12)}
+.ccv2-eyebrow{color:#91a5b1;font-size:11px;letter-spacing:.13em;font-weight:700;margin-bottom:10px}
+.ccv2-header h2{font-size:clamp(27px,3vw,41px);line-height:1.15;letter-spacing:-.04em;margin:0 0 9px;color:#f7f9fb}
+.ccv2-header p{font-size:14px;line-height:1.55;color:#aab7bf;margin:0}
+.ccv2-header strong{color:#e8f5f7;font-weight:650}
+.ccv2-create{white-space:nowrap;cursor:pointer;border:1px solid #67d0d8;background:#63d6df;color:#112127;border-radius:11px;padding:12px 17px;font-weight:750;font-size:14px;min-height:44px}
+.ccv2-create:hover{background:#a1f2f4}
+.ccv2-create:focus-visible,.ccv2-shell button:focus-visible{outline:3px solid #bdf6f8;outline-offset:3px}
+.ccv2-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.ccv2-metric{text-align:left;cursor:pointer;min-width:0;min-height:110px;display:flex;flex-direction:column;justify-content:space-between;padding:17px 18px;border:1px solid #353e47;border-radius:14px;background:#1c232b;color:#f1f4f7}
+.ccv2-metric:hover,.ccv2-open:hover{border-color:#65b9c1;background:#24333b}
+.ccv2-metric-value{font-size:36px;font-weight:760;letter-spacing:-.04em;line-height:1}
+.ccv2-metric-label{color:#b3bec7;font-size:13px;font-weight:550;line-height:1.35}
+.ccv2-urgent .ccv2-metric-value{color:#f5bda8}
+.ccv2-columns{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);gap:14px;align-items:start}
+.ccv2-sidepanels{display:grid;gap:14px;min-width:0}
+.ccv2-panel{min-width:0;background:#1b222a;border:1px solid #353d46;border-radius:16px;padding:22px}
+.ccv2-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:17px}
+.ccv2-panel h2{font-size:20px;color:#f5f7fa;line-height:1.24;letter-spacing:-.025em;font-weight:700;margin:0}
+.ccv2-link{color:#8fe0e6;background:transparent;border:0;padding:8px 0;font-size:12px;font-weight:650;cursor:pointer;text-align:left}
+.ccv2-link:hover{text-decoration:underline}
+.ccv2-actions,.ccv2-upcoming-list{padding:0;margin:0;list-style:none}
+.ccv2-action{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:17px 0;border-top:1px solid #303a43}
+.ccv2-action:first-child{border-top:0;padding-top:2px}
+.ccv2-action-body{min-width:0}
+.ccv2-action h3{font-size:15px;font-weight:650;line-height:1.4;margin:7px 0;color:#f3f6f9;overflow-wrap:anywhere}
+.ccv2-action p{font-size:12px;color:#a0b0ba;margin:0;line-height:1.5;overflow-wrap:anywhere}
+.ccv2-stage{font-size:11px;letter-spacing:.01em;font-weight:700;color:#9bd4dc}
+.ccv2-stage-failed{color:#ffb49f}.ccv2-stage-review{color:#eacb90}.ccv2-stage-approved{color:#91e3c7}
+.ccv2-open{cursor:pointer;flex-shrink:0;border:1px solid #43545d;border-radius:10px;background:#253139;color:#e7f5f6;padding:9px 12px;font-size:12px;min-height:40px}
+.ccv2-upcoming{display:grid;grid-template-columns:95px minmax(0,1fr);gap:6px 10px;padding:13px 0;border-top:1px solid #303a43}
+.ccv2-upcoming:first-child{border-top:0;padding-top:2px}
+.ccv2-upcoming-time{font-size:12px;color:#91dae1;line-height:1.4}.ccv2-upcoming-title{font-size:13px;color:#f0f3f5;overflow-wrap:anywhere}.ccv2-upcoming-channel{grid-column:2;font-size:11px;color:#9aaeb9}
+.ccv2-integrity{border-color:#46616a;background:#192a30}
+.ccv2-integrity p{font-size:13px;line-height:1.6;color:#c0cbd0;margin:14px 0}
+.ccv2-empty{padding:26px 0;margin:0;color:#aab8c0;font-size:14px;line-height:1.6}
+@media(max-width:1080px){.ccv2-columns{grid-template-columns:minmax(0,1fr)}.ccv2-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){html.cc-v2 .app{grid-template-columns:minmax(0,1fr)}.ccv2-shell{padding:15px 0 90px}.ccv2-header{flex-direction:column;align-items:stretch;gap:15px;padding-bottom:17px}.ccv2-header h2{font-size:31px}.ccv2-create{align-self:flex-start}.ccv2-panel{padding:18px}.ccv2-metric{min-height:93px;padding:13px}.ccv2-metric-value{font-size:31px}.ccv2-panel-head{flex-wrap:wrap}.ccv2-columns{gap:11px}}
+@media(max-width:360px){.ccv2-stats{gap:8px}.ccv2-metric{padding:11px;min-height:94px}.ccv2-metric-label{font-size:12px}.ccv2-action{align-items:flex-start;flex-direction:column}.ccv2-open{align-self:flex-start}.ccv2-upcoming{grid-template-columns:80px minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){.ccv2-shell *, .ccv2-shell *:before,.ccv2-shell *:after{transition:none!important;animation:none!important}}
