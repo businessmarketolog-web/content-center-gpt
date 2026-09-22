@@ -47,3 +47,18 @@ html.cc-v2 #dashboard{max-width:1540px;margin:0 auto}
 @media(max-width:700px){html.cc-v2 .app{grid-template-columns:minmax(0,1fr)}.ccv2-shell{padding:15px 0 90px}.ccv2-header{flex-direction:column;align-items:stretch;gap:15px;padding-bottom:17px}.ccv2-header h2{font-size:31px}.ccv2-create{align-self:flex-start}.ccv2-panel{padding:18px}.ccv2-metric{min-height:93px;padding:13px}.ccv2-metric-value{font-size:31px}.ccv2-panel-head{flex-wrap:wrap}.ccv2-columns{gap:11px}}
 @media(max-width:360px){.ccv2-stats{gap:8px}.ccv2-metric{padding:11px;min-height:94px}.ccv2-metric-label{font-size:12px}.ccv2-action{align-items:flex-start;flex-direction:column}.ccv2-open{align-self:flex-start}.ccv2-upcoming{grid-template-columns:80px minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){.ccv2-shell *, .ccv2-shell *:before,.ccv2-shell *:after{transition:none!important;animation:none!important}}
+
+/* Stage 2: clearly labeled, read-only preparation checks */
+.ccv2-action-controls{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.ccv2-check{border:1px solid #566f78;border-radius:10px;background:transparent;color:#c7e8eb;font-size:12px;font-weight:650;cursor:pointer;padding:9px 12px;min-height:40px}
+.ccv2-check:hover{border-color:#83d7dd;background:#293b43}
+.ccv2-check-panel{margin-top:18px;padding:18px;border:1px solid #55747d;border-radius:14px;background:#172c33}
+.ccv2-check-panel[hidden]{display:none}
+.ccv2-check-panel h3{font-size:17px;font-weight:700;line-height:1.35;margin:0;overflow-wrap:anywhere;color:#eff8f8}
+.ccv2-close-check{font-size:23px;border:1px solid #64818a;color:#eff8f8;background:transparent;border-radius:9px;cursor:pointer;min-width:38px;min-height:38px}
+.ccv2-check-list{margin:14px 0;padding-left:22px;display:grid;gap:11px}
+.ccv2-check-list li{font-size:13px;line-height:1.4;color:#d9e4e8}
+.ccv2-check-list li.ccv2-check-attention::marker{color:#f2ae9b}
+.ccv2-check-list li.ccv2-check-review::marker{color:#eccb88}
+.ccv2-check-note{font-size:12px;color:#b7cdd2;line-height:1.5;margin:14px 0 0}
+@media(max-width:700px){.ccv2-action{align-items:flex-start;flex-wrap:wrap}.ccv2-action-controls{width:100%;justify-content:flex-start}}

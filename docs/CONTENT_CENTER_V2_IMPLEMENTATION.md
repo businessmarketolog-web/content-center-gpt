@@ -18,6 +18,14 @@ Source inspected: `index.html`, `app.js`, `app.css`, `clients-v9.js`, `workflow-
 - New assets are loaded from `index.html` and cached under a new service-worker version. **Default URL keeps the existing dashboard**: to see this prototype on a build of the branch, use `?workspace=v2`. This does NOT make the branch accessible on production GitHub Pages, whose source is `main`.
 - `tests/workspace.test.cjs`: client isolation, ordering, escape/sanitization, empty/invalid dates, opt-in default, and preview integration smoke checks.
 
+## Implemented next: deterministic preflight (phase 2, same draft PR)
+
+- `v2/preflight.js` adds a pure, read-only checklist for missing title, visual media, Telegram/Instagram text, broken HTTPS media references, an absent scheduled date, placeholder markers and possible factual claims (prices, dates, promotions). It also reminds the owner to verify approval of the current version and provider-confirmed publication, where applicable.
+- A **«Проверить»** action in the V2 queue renders findings for the chosen material. The action selects a card by both its existing ID and the active `client_id`; it does not modify any card, change status, verify a price externally, auto-approve, or publish anything.
+- **Do not call this a Fact Checker.** The interface explicitly states that real factual accuracy, media usage rights, version-specific approval and actual publishing results need separate evidence. Automated QA only catches deterministic content-preparation omissions.
+- Read-only Canva brand-kit lookup returned no kits and Airtable base lookup returned no bases in the currently connected accounts (2026-09-23); neither app was made a second content database. Existing Planable/Workfront integrations were not written to or required for this stage.
+- `tests/preflight.test.cjs` and interaction regression in `tests/workspace.test.cjs`: 12/12 tests passing on Node, plus JS syntax checks. A rendered authenticated browser/iPhone end-to-end test is still needed before release.
+
 ## Data ownership and contracts (next implementation phases)
 
 - One `clients.id` per client, one `content_items.id` per independent material; child platform variants retain a parent reference. The existing Content Center is the canonical place to create/edit clients. ChatGPT must update an existing ID, not create a duplicate.

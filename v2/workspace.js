@@ -21,7 +21,8 @@
     return '<li class="ccv2-action"><div class="ccv2-action-body">'+
       '<span class="ccv2-stage ccv2-stage-'+e(item.status)+'">'+e(labels[item.status]||item.status)+'</span>'+
       '<h3>'+e(item.title)+'</h3><p>'+e([item.format,item.channel,formatDate(item.dueAt)].filter(Boolean).join(' · '))+'</p></div>'+
-      '<button type="button" class="ccv2-open" data-ccv2-open="'+e(item.id)+'" aria-label="Открыть материал '+e(item.title)+'">Открыть <span aria-hidden="true">↗</span></button></li>';
+      '<div class="ccv2-action-controls"><button type="button" class="ccv2-check" data-ccv2-check="'+e(item.id)+'" aria-label="Предпроверка материала '+e(item.title)+'">Проверить</button>'+
+      '<button type="button" class="ccv2-open" data-ccv2-open="'+e(item.id)+'" aria-label="Открыть материал '+e(item.title)+'">Открыть <span aria-hidden="true">↗</span></button></div></li>';
   }
   function upcoming(item){
     return '<li class="ccv2-upcoming"><span class="ccv2-upcoming-time">'+e(formatDate(item.scheduledAt))+'</span>'+
@@ -41,6 +42,7 @@
       '<div class="ccv2-panel-head"><div><div class="ccv2-eyebrow">СЛЕДУЮЩИЕ ДЕЙСТВИЯ</div><h2 id="ccv2-actions-heading">Очередь производства</h2></div><button type="button" class="ccv2-link" data-ccv2-view="production">Все материалы →</button></div>'+
       (model.actions.length?'<ol class="ccv2-actions">'+model.actions.map(action).join('')+'</ol>':
        '<p class="ccv2-empty">Сейчас нет материалов, требующих действий. Создайте материал или откройте календарь.</p>')+
+      '<section id="ccv2-check-panel" class="ccv2-check-panel" aria-live="polite" aria-label="Результаты предпроверки" hidden></section>'+
       '</section><aside class="ccv2-sidepanels"><section class="ccv2-panel" aria-labelledby="ccv2-plan-heading">'+
       '<div class="ccv2-panel-head"><div><div class="ccv2-eyebrow">БЛИЖАЙШИЕ 7 ДНЕЙ</div><h2 id="ccv2-plan-heading">План публикаций</h2></div><button type="button" class="ccv2-link" data-ccv2-view="calendar">Календарь →</button></div>'+
       (model.upcoming.length?'<ol class="ccv2-upcoming-list">'+model.upcoming.map(upcoming).join('')+'</ol>':
@@ -55,6 +57,22 @@
     root.querySelectorAll('[data-ccv2-open]').forEach(button=>button.addEventListener('click',()=>{
       const id=button.dataset.ccv2Open;
       if(id&&state.content.some(item=>String(item.id)===id&&item.client_id===state.clientId))openDrawer(id);
+    }));
+    root.querySelectorAll('[data-ccv2-check]').forEach(button=>button.addEventListener('click',()=>{
+      const id=button.dataset.ccv2Check;
+      const item=state.content.find(x=>String(x.id)===id&&x.client_id===state.clientId);
+      const panel=root.querySelector('#ccv2-check-panel');
+      if(!item||!panel||typeof CCV2Preflight==='undefined')return;
+      const report=CCV2Preflight.evaluate(item);
+      const notes=report.findings.length
+        ?'<ul class="ccv2-check-list">'+report.findings.map(f=>'<li class="ccv2-check-'+e(f.level)+'">'+e(f.message)+'</li>').join('')+'</ul>'
+        :'<p class="ccv2-check-note">Технические замечания не обнаружены. Это не подтверждение достоверности контента.</p>';
+      panel.innerHTML='<div class="ccv2-panel-head"><div><div class="ccv2-eyebrow">ПРЕДПРОВЕРКА · БЕЗ ИЗМЕНЕНИЯ МАТЕРИАЛА</div>'+
+        '<h3>'+e(item.title||'Материал без названия')+'</h3></div><button type="button" class="ccv2-close-check" aria-label="Закрыть предпроверку">×</button></div>'+
+        notes+'<p class="ccv2-check-note">Факты, права на медиа, одобрение актуальной версии и результат отправки требуют отдельного подтверждения.</p>';
+      panel.hidden=false;
+      panel.querySelector('.ccv2-close-check').addEventListener('click',()=>{panel.hidden=true;panel.innerHTML='';});
+      panel.scrollIntoView?.({block:'nearest',behavior:'smooth'});
     }));
     const create=root.querySelector('[data-ccv2-create]');
     if(create)create.addEventListener('click',()=>openAdd());

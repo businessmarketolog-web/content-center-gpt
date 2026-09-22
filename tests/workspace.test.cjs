@@ -6,6 +6,7 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const modelSrc=fs.readFileSync(path.join(root,'v2/workspace-model.js'),'utf8');
 const uiSrc=fs.readFileSync(path.join(root,'v2/workspace.js'),'utf8');
+const preflightSrc=fs.readFileSync(path.join(root,'v2/preflight.js'),'utf8');
 function model(){const scope={};vm.runInNewContext(modelSrc,scope);return scope.CCV2Model;}
 const now=Date.UTC(2026,8,23,12);
 const same=(status,title='Тест',date=now+86400000)=>({id:status+title,client_id:'one',status,title,scheduled_at:new Date(date).toISOString()});
@@ -59,4 +60,25 @@ test('preview renders selected client only, with escaped title and honest public
   assert.doesNotMatch(dashboard.innerHTML,/<script>alert\(1\)<\/script>/);
   assert.doesNotMatch(dashboard.innerHTML,/Чужой клиент/);
   assert.match(dashboard.innerHTML,/Фактическую отправку/);
+});
+
+test('preflight button inspects selected-client material only and does not write',()=>{
+  const note={innerHTML:'',hidden:true,querySelector(){return {addEventListener(){}}},scrollIntoView(){}};
+  const button={dataset:{ccv2Check:'one-card'},addEventListener(type,handler){if(type==='click')this.click=handler}};
+  const dashboard={innerHTML:'',querySelectorAll(selector){return selector==='[data-ccv2-check]'?[button]:[]},querySelector(selector){return selector==='#ccv2-check-panel'?note:null}};
+  const state={session:{user:{id:'owner'}},clientId:'one',content:[
+    {id:'one-card',client_id:'one',title:'Тур 250 000 ₽',format:'Post',channel:'Telegram',status:'draft',caption:'Цена 250 000 ₽',media_urls:[]},
+    {id:'foreign',client_id:'two',title:'Чужой клиент',format:'Post',channel:'Telegram',status:'draft',caption:'Текст',media_urls:[]}],publishQueue:[]};
+  const preflightScope={};vm.runInNewContext(preflightSrc,preflightScope);
+  const scope={window:{location:{search:'?workspace=v2'}},URLSearchParams,
+    document:{documentElement:{classList:{add(){}}}},state,CCV2Model:model(),
+    CCV2Preflight:preflightScope.CCV2Preflight,renderDashboard(){},
+    $:id=>id==='dashboard'?dashboard:null,currentClient(){return{name:'Клиент'}},
+    show(){},openDrawer(){},openAdd(){},console};
+  const before=JSON.stringify(state.content);vm.runInNewContext(uiSrc,scope);
+  assert.equal(typeof button.click,'function');button.click();
+  assert.equal(note.hidden,false);assert.match(note.innerHTML,/Проверьте актуальность дат, цен/);
+  assert.doesNotMatch(note.innerHTML,/Чужой клиент/);assert.equal(JSON.stringify(state.content),before);
+  const original=note.innerHTML;button.dataset.ccv2Check='foreign';button.click();
+  assert.equal(note.innerHTML,original);
 });
