@@ -62,3 +62,21 @@ html.cc-v2 #dashboard{max-width:1540px;margin:0 auto}
 .ccv2-check-list li.ccv2-check-review::marker{color:#eccb88}
 .ccv2-check-note{font-size:12px;color:#b7cdd2;line-height:1.5;margin:14px 0 0}
 @media(max-width:700px){.ccv2-action{align-items:flex-start;flex-wrap:wrap}.ccv2-action-controls{width:100%;justify-content:flex-start}}
+
+/* Opt-in ChatGPT-to-existing-material manual handoff */
+.ccv2-handoff-panel{margin-top:16px;background:#1b2830;border:1px solid #466b76;border-radius:16px;padding:22px;display:grid;gap:14px}
+.ccv2-handoff-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ccv2-handoff-heading h2{font-size:20px;line-height:1.3;margin:0;color:#f3f9fa}
+.ccv2-handoff-help{color:#bfcdd3;font-size:13px;line-height:1.55;margin:0}
+.ccv2-handoff-label{font-size:13px;font-weight:670;color:#e3f2f4;display:grid;gap:9px}
+.ccv2-handoff-textarea{display:block;width:100%;font-size:13px;font-weight:400;line-height:1.5;border-radius:10px;border:1px solid #526b75;background:#121d24;color:#edf8f9;padding:12px;resize:vertical;min-height:110px;overflow-wrap:anywhere}
+.ccv2-handoff-textarea:focus-visible{outline:3px solid #a4eef4;outline-offset:2px}
+.ccv2-handoff-message{color:#b5d9db;font-size:13px;line-height:1.55;margin:0}
+.ccv2-handoff-error{color:#ffbda8}
+.ccv2-handoff-diff{display:grid;gap:10px}
+.ccv2-handoff-change{background:#23333b;border:1px solid #435860;border-radius:11px;padding:12px;min-width:0}
+.ccv2-handoff-change strong{font-size:13px;color:#dcf7f8}
+.ccv2-handoff-change p{font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0}
+.ccv2-handoff-before{color:#a8b7be}.ccv2-handoff-after{color:#d2ecdc}
+.ccv2-handoff-panel button:disabled{opacity:.48;cursor:not-allowed}
+@media(max-width:700px){.ccv2-handoff-panel{padding:16px}.ccv2-handoff-heading h2{font-size:18px}.ccv2-handoff-panel .ccv2-create{width:100%}}
