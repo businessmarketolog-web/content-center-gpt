@@ -1,0 +1,34 @@
+name: Content Center V2 safety checks
+
+on:
+  push:
+    branches:
+      - 'feat/content-center-v2-safety-*'
+  pull_request:
+    branches:
+      - 'feat/content-center-v2-foundation-20260923'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Node regression and asset syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Execute regression suite
+        run: node --test tests/*.test.cjs
+      - name: Check V2 JavaScript syntax
+        run: |
+          for file in v2/*.js service-worker.js; do node --check "$file"; done
+      - name: Ensure opt-in modules are cached for PWA
+        run: |
+          node -e "const f=require('fs');const h=f.readFileSync('index.html','utf8');const s=f.readFileSync('service-worker.js','utf8');for(const p of ['v2/content-dedup.js','v2/content-dedup-ui.js','v2/handoff-ui.js','v2/workspace.js']){if(!h.includes(p)||!s.includes(p))throw Error('Missing script/cache entry: '+p)}"

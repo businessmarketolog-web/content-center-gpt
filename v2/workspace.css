@@ -80,3 +80,11 @@ html.cc-v2 #dashboard{max-width:1540px;margin:0 auto}
 .ccv2-handoff-before{color:#a8b7be}.ccv2-handoff-after{color:#d2ecdc}
 .ccv2-handoff-panel button:disabled{opacity:.48;cursor:not-allowed}
 @media(max-width:700px){.ccv2-handoff-panel{padding:16px}.ccv2-handoff-heading h2{font-size:18px}.ccv2-handoff-panel .ccv2-create{width:100%}}
+
+/* V2 owner workflow: informative, no duplicate client/task forms */
+.ccv2-workflow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.ccv2-workflow>div{min-width:0;padding:16px 18px;background:#1a232a;border:1px solid #3a4852;border-radius:14px}
+.ccv2-workflow-step{display:block;color:#8fd9e0;font-size:10px;font-weight:750;letter-spacing:.1em;margin-bottom:8px}
+.ccv2-workflow strong{display:block;color:#f0f5f7;font-size:14px;margin-bottom:7px}
+.ccv2-workflow p{font-size:12px;line-height:1.55;color:#aebdc6;margin:0}
+@media(max-width:740px){.ccv2-workflow{grid-template-columns:minmax(0,1fr);gap:8px}.ccv2-workflow>div{padding:14px 16px}}

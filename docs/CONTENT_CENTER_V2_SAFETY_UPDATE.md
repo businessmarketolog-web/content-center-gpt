@@ -1,0 +1,26 @@
+# V2 safety update — 13.10.2026
+
+## Tested implementation
+
+- Opt-in V2 workspace provides one canonical client → content → approval/publication workflow; no shadow records or client duplication.
+- ChatGPT handoff never overwrites unsaved text, date, channel, format, status or media in a visible editor; changes are only staged for explicit owner save.
+- The new-material save warns of a possible same-client / same-name / same-format / same-channel duplicate. Owner can cancel or explicitly proceed with recurring content. The warning is only enabled for `?workspace=v2`.
+- New script references and PWA cache version are updated. Legacy `main` and owner-code login remain unchanged.
+
+## Verification completed
+
+- Baseline: 25/25 Node tests.
+- Updated feature: 34/34 Node tests.
+- JavaScript syntax checks pass.
+- Patch tested with `git apply --check` and `git apply` against the exact foundation SHA.
+
+## Still not completed
+
+- Browser/end-to-end verification on an authorized iPhone and Windows device.
+- Backend-confirmed ChatGPT ↔ Content Center synchronization.
+- Fact checking against source documents and real social network publish outcomes.
+- Restoring a full backup in an isolated staging database.
+
+## Release gate and rollback
+
+Keep changes on a new branch and draft PR until CI checks and device-level smoke tests complete. For rollback, preserve `backup/main-before-v2-20261013` and `backup/v2-foundation-before-safety-20261013` Git refs. Do not modify production Supabase before an isolated backup/restore test.

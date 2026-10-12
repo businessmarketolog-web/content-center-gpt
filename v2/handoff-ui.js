@@ -15,6 +15,25 @@
   }
   function add(parent,...children){children.forEach(child=>parent.appendChild(child));return parent;}
   function message(node,content,isError=false){node.textContent=content;node.className='ccv2-handoff-message'+(isError?' ccv2-handoff-error':'');}
+  // Do not replace a visible editor containing unsaved changes, even for another material.
+  function editorHasUnsavedChanges(){
+    const drawer=$('contentDrawer');
+    if(!drawer||!drawer.classList||!drawer.classList.contains('on'))return false;
+    const opened=byId(state.selectedId);
+    if(!opened)return true;
+    const scheduled=typeof isoLocal==='function'?isoLocal(opened.scheduled_at):null;
+    if(scheduled===null)return true;
+    const expected={
+      dTitle:String(opened.title??''),dBrief:String(opened.brief??''),
+      dCaption:String(opened.caption??''),dStatus:String(opened.status??''),
+      dDate:scheduled,dFormat:String(opened.format??''),dChannel:String(opened.channel??''),
+      dMedia:(Array.isArray(opened.media_urls)?opened.media_urls:[]).join('\n')
+    };
+    return Object.entries(expected).some(([id,value])=>{
+      const field=$(id);
+      return !field||field.value!==value;
+    });
+  }
   function renderPanel(item,request){
     const shell=$('dashboard')?.querySelector('.ccv2-shell');
     if(!shell)return;
@@ -65,7 +84,9 @@
       try{
         if(transfer.disabled)return;
         const result=resolve();
-        if(!window.confirm('Перенести проверенные поля в редактор этого материала? Существующие несохранённые правки в редакторе нельзя заменять.'))return;
+        if(editorHasUnsavedChanges())throw Error('В открытом редакторе есть несохранённые правки. Сохраните или отмените их перед переносом.');
+        if(!window.confirm('Перенести проверенные поля в редактор этого материала?'))return;
+        if(editorHasUnsavedChanges())throw Error('Редактор изменился. Сначала сохраните существующие правки.');
         openDrawer(result.contentId);
         if(state.selectedId!==result.contentId)throw Error('Редактор открыл другой материал. Перенос отменён.');
         const current=byId(result.contentId);
