@@ -26,3 +26,7 @@
 ## Release gate and rollback
 
 Keep changes on a new branch and draft PR until CI checks and device-level smoke tests complete. For rollback, preserve `backup/main-before-v2-20261013` and `backup/v2-foundation-before-safety-20261013` Git refs. Do not modify production Supabase before an isolated backup/restore test.
+
+## Browser validation gate (mock data)
+
+GitHub Actions now contains an isolated Chromium smoke job for desktop and mobile-sized viewports. It loads the *real* V2 HTML and scripts using a fake owner session/client records. The Supabase CDN bundle is replaced with an in-memory mock; all requests to non-local hosts are blocked, and service workers are disabled during this test. This is **not** the same as signed-in Safari testing on a real iPhone or a staging Supabase instance.

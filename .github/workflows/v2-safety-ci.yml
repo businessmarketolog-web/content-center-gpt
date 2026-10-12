@@ -32,3 +32,21 @@ jobs:
       - name: Ensure opt-in modules are cached for PWA
         run: |
           node -e "const f=require('fs');const h=f.readFileSync('index.html','utf8');const s=f.readFileSync('service-worker.js','utf8');for(const p of ['v2/content-dedup.js','v2/content-dedup-ui.js','v2/handoff-ui.js','v2/workspace.js']){if(!h.includes(p)||!s.includes(p))throw Error('Missing script/cache entry: '+p)}"
+
+  browser-smoke:
+    name: Isolated Chromium desktop and mobile smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser runner
+        run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Install headless Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test actual V2 HTML against mocked Supabase (no production API requests)
+        run: node tests/browser-smoke.cjs
