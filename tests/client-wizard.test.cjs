@@ -47,3 +47,14 @@ test('onboarding uses existing owner form, confirmation and submit rather than a
   assert.ok(html.includes(name));assert.ok(worker.includes(name));
  }
 });
+
+test('successful V2-only client creation offers to create the first material in the same client record',()=>{
+ const src=fs.readFileSync(path.join(root,'clients-v9.js'),'utf8');
+ assert.match(src,/await loadClients\(\)/);
+ assert.match(src,/if\(mode==='create'\)/);
+ assert.match(src,/new URLSearchParams\(window\.location\.search\)\.get\('workspace'\)==='v2'/);
+ assert.match(src,/window\.confirm\('Клиент создан/);
+ assert.match(src,/openAdd\(\)/);
+ assert.match(src,/owner_create_client/);
+ assert.doesNotMatch(src,/createDemoClient/);
+});
