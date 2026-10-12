@@ -38,3 +38,5 @@ The manual handoff now checks current values in **title, caption, brief, status,
 The ChatGPT prompt includes only an allowlist from the chosen client’s brand rules (audience, goals, description, tone and fonts) and the selected content item’s brief goals, offer, key points, references and CTA. Unknown metadata fields, tokens and keys are not passed. The assistant’s response still stages only changes to the three text fields; no DB writes or automatic publication are permitted.
 
 Local Node regressions: **43/43**. Real Safari and authenticated backend tests remain release gates.
+
+The Chromium desktop/mobile smoke test now also constructs a real GPT handoff response, opens the current editor, changes an unsaved deadline, attempts transfer and checks that the editor is not overwritten. This test never accesses production Supabase.
