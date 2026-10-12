@@ -71,3 +71,26 @@ test('new prompt for same card invalidates older request, preventing accidental 
  const {h,request}=start();const next=h.buildRequest({client,item:card,requestId:OTHER});
  assert.throws(()=>h.parseReply(makeReply(request),{ticket:next.ticket,baseline:next.baseline,clientId:CLIENT,item:card}),/другой/);
 });
+
+test('ChatGPT prompt includes only selected client brand profile and task brief, never unknown secrets',()=>{
+ const richClient={...client,business_type:'Турагентство',brand_rules:{
+  audience:'Семьи с детьми',goals:'Запросы на подбор тура',tone:'Тёплый и экспертный',
+  primary_font:'Evolventa',accent_font:'Liana',api_secret:'LEAK_ME_NEVER',owner_code:'LEAK_ME_NEVER'
+ }};
+ const richItem={...card,brief_data:{goal:'Поддержать продажи',key_points:'Пляж и инфраструктура',cta:'Написать менеджеру',token:'LEAK_ME_NEVER'}};
+ const handoff=create().buildRequest({client:richClient,item:richItem,requestId:REQUEST});
+ assert.match(handoff.prompt,/Семьи с детьми/);
+ assert.match(handoff.prompt,/Тёплый и экспертный/);
+ assert.match(handoff.prompt,/Evolventa/);
+ assert.match(handoff.prompt,/Пляж и инфраструктура/);
+ assert.match(handoff.prompt,/Написать менеджеру/);
+ assert.doesNotMatch(handoff.prompt,/LEAK_ME_NEVER|owner_code|api_secret/);
+ assert.equal(handoff.ticket.client_id,CLIENT);
+});
+test('brand context is length bounded and ignores arrays or unrelated metadata',()=>{
+ const rich={...client,brand_rules:{audience:'Т'.repeat(20000),extra:'UNAPPROVED_EXTRA'},business_type:'Турагентство'};
+ const out=create().buildRequest({client:rich,item:card,requestId:REQUEST});
+ assert.ok(out.prompt.length<7000,'prompt must remain bounded');
+ assert.doesNotMatch(out.prompt,/UNAPPROVED_EXTRA/);
+ assert.match(out.prompt,/Турагентство/);
+});

@@ -27,11 +27,21 @@
       dTitle:String(opened.title??''),dBrief:String(opened.brief??''),
       dCaption:String(opened.caption??''),dStatus:String(opened.status??''),
       dDate:scheduled,dFormat:String(opened.format??''),dChannel:String(opened.channel??''),
-      dMedia:(Array.isArray(opened.media_urls)?opened.media_urls:[]).join('\n')
+      dAssignee:String(opened.assignee??''),dDue:typeof isoLocal==='function'?isoLocal(opened.due_at):'',
+      dMedia:(Array.isArray(opened.media_urls)?opened.media_urls:[]).join('\n'),
+      dTags:(Array.isArray(opened.tags)?opened.tags:[]).join(', ')
     };
-    return Object.entries(expected).some(([id,value])=>{
+    if(Object.entries(expected).some(([id,value])=>{
       const field=$(id);
       return !field||field.value!==value;
+    }))return true;
+    // The existing V4 editor also contains structured production brief inputs.
+    // Fail closed when any of these values are missing or different from the saved material.
+    const brief=opened.brief_data&&typeof opened.brief_data==='object'&&!Array.isArray(opened.brief_data)?opened.brief_data:{};
+    const keys=['goal','audience','offer','key_points','references','cta','shoot_deadline','producer','editor'];
+    return keys.some(key=>{
+      const field=$('bd_'+key);
+      return !field||field.value!==String(brief[key]??'');
     });
   }
   function renderPanel(item,request){

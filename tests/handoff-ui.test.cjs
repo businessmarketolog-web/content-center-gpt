@@ -22,8 +22,11 @@ function env({enabled=true,signedIn=true,selected='one',openEditor=false,dirtyFi
  const drawer=el('aside');drawer.classList={contains:name=>name==='on'&&openEditor};
  Object.assign(fields,{
   dStatus:el('select'),dDate:el('input'),dFormat:el('select'),
-  dChannel:el('select'),dMedia:el('textarea')
+  dChannel:el('select'),dMedia:el('textarea'),dAssignee:el('input'),
+  dDue:el('input'),dTags:el('input')
  });
+ const briefKeys=['goal','audience','offer','key_points','references','cta','shoot_deadline','producer','editor'];
+ for(const key of briefKeys)fields['bd_'+key]=el('input');
  fields.dStatus.value=state.content[0].status;
  fields.dDate.value='';fields.dFormat.value='Post';fields.dChannel.value='Instagram';fields.dMedia.value='';
  if(openEditor)state.selectedId=itemId;
@@ -93,7 +96,7 @@ function prepareTransfer(v){
  return panel;
 }
 test('unsaved edits in any existing editor field are never overwritten by ChatGPT handoff',()=>{
- for(const field of ['dTitle','dBrief','dCaption','dStatus','dDate','dFormat','dChannel','dMedia']){
+ for(const field of ['dTitle','dBrief','dCaption','dStatus','dDate','dFormat','dChannel','dMedia','dAssignee','dDue','dTags','bd_goal','bd_audience','bd_offer','bd_key_points','bd_references','bd_cta','bd_shoot_deadline','bd_producer','bd_editor']){
   const v=env({openEditor:true,dirtyField:field});
   const panel=prepareTransfer(v);
   const original=v.fields[field].value;
