@@ -88,3 +88,17 @@ html.cc-v2 #dashboard{max-width:1540px;margin:0 auto}
 .ccv2-workflow strong{display:block;color:#f0f5f7;font-size:14px;margin-bottom:7px}
 .ccv2-workflow p{font-size:12px;line-height:1.55;color:#aebdc6;margin:0}
 @media(max-width:740px){.ccv2-workflow{grid-template-columns:minmax(0,1fr);gap:8px}.ccv2-workflow>div{padding:14px 16px}}
+
+/* Optional six-step wrapper over the existing owner-only client RPC form */
+.ccv2-client-progress{margin-bottom:14px;color:#94dce1;font-size:13px;font-weight:750;letter-spacing:.025em}
+.ccv2-client-step{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-width:0}
+.ccv2-client-step[hidden]{display:none}
+.ccv2-client-step>h3{grid-column:1/-1;margin:2px 0 8px;color:#f3f7f9;font-size:19px}
+.ccv2-client-step .client-field-v9{grid-column:1/-1}
+.ccv2-client-step .client-field-v9:has(input){grid-column:auto}
+.ccv2-client-summary{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,2fr);gap:10px 14px;margin:0;grid-column:1/-1}
+.ccv2-client-summary dt{color:#a8bdc8;font-size:12px}.ccv2-client-summary dd{color:#edf2f4;margin:0;font-size:13px;overflow-wrap:anywhere;white-space:pre-wrap}
+.ccv2-client-note{grid-column:1/-1;font-size:12px;color:#a9c5ce;line-height:1.5}
+.ccv2-client-step+ .client-manager-footer-v9{display:flex;flex-wrap:wrap}
+.ccv2-client-step+ .client-manager-footer-v9 [hidden]{display:none}
+@media(max-width:650px){.ccv2-client-step{grid-template-columns:minmax(0,1fr)}.ccv2-client-step .client-field-v9:has(input){grid-column:1/-1}.ccv2-client-summary{grid-template-columns:minmax(0,1fr)}}

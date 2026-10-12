@@ -5,12 +5,13 @@
 - Opt-in V2 workspace provides one canonical client → content → approval/publication workflow; no shadow records or client duplication.
 - ChatGPT handoff never overwrites unsaved text, date, channel, format, status or media in a visible editor; changes are only staged for explicit owner save.
 - The new-material save warns of a possible same-client / same-name / same-format / same-channel duplicate. Owner can cancel or explicitly proceed with recurring content. The warning is only enabled for `?workspace=v2`.
-- New script references and PWA cache version are updated. Legacy `main` and owner-code login remain unchanged.
+- New script references and PWA cache version are updated.
+- Six-step client onboarding works on the original owner client form and preserves existing RPC creation/update and brand profile fields. Legacy `main` and owner-code login remain unchanged.
 
 ## Verification completed
 
 - Baseline: 25/25 Node tests.
-- Updated feature: 34/34 Node tests.
+- Updated feature: 40/40 Node tests.
 - JavaScript syntax checks pass.
 - Patch tested with `git apply --check` and `git apply` against the exact foundation SHA.
 
