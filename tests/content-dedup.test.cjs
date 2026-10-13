@@ -22,7 +22,7 @@ test('cross-client, archived and different channel or format never trigger dupli
 function scene({enabled=true,allow=false}={}){
  const fields={fTitle:{value:'Новинки Таиланда'},fFormat:{value:'Reels'},fChannel:{value:'Instagram'},saveAdd:{onclick:null}};
  let saves=0,questions=0;const scope={URLSearchParams,
-  window:{location:{search:enabled?'?workspace=v2':''},confirm(){questions++;return allow;}},
+  window:{location:{search:enabled?'?workspace=v2':'?workspace=v1'},confirm(){questions++;return allow;}},
   state:{session:{},clientId:client,content:[item]},CCV2Duplicate:model.CCV2Duplicate,
   addContent(){saves++;return Promise.resolve('saved');},$:id=>fields[id]||null,toast(){}};
  fields.saveAdd.onclick=scope.addContent; // matches the real app's early assignment
@@ -44,5 +44,5 @@ test('V2 assets are declared and refreshed in HTML and PWA cache',()=>{
   assert.match(html,new RegExp(name.replace('.','\\.')));
   assert.match(worker,new RegExp(name.replace('.','\\.')));
  }
- assert.match(worker,/content-center-v21-20261013-brandnav2/);
+ assert.match(worker,/content-center-v22-20261013-v2default1/);
 });

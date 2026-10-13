@@ -32,14 +32,14 @@ function env({enabled=true,signedIn=true,selected='one',openEditor=false,dirtyFi
  if(openEditor)state.selectedId=itemId;
  if(dirtyField)fields[dirtyField].value='НЕСОХРАНЁННЫЕ ПРАВКИ';
  const openCalls=[];
- const scope={window:{location:{search:enabled?'?workspace=v2':''},confirm(){return true}},URLSearchParams,CCV2Handoff:contractScope.CCV2Handoff,
+ const scope={window:{location:{search:enabled?'?workspace=v2':'?workspace=v1'},confirm(){return true}},URLSearchParams,CCV2Handoff:contractScope.CCV2Handoff,
   state,currentClient(){return {id:clientId,name:'Клиент'}},renderDashboard(){},
   $:id=>id==='dashboard'?dashboard:id==='contentDrawer'?drawer:fields[id]||null,isoLocal:()=>'',document:{createElement:el},crypto:{randomUUID:()=> '44444444-4444-4444-8444-444444444444'},
   Event:class{constructor(type){this.type=type;}},openDrawer(id){openCalls.push(id);state.selectedId=id;},
   toast(){},console,navigator:{clipboard:{writeText:async()=>{}}}};
  return {scope,control,cardButton,dashboard,shell,fields,openCalls};
 }
-test('new UI is opt-in and does not modify default dashboard',()=>{
+test('ChatGPT handoff disabled in explicit legacy rollback mode',()=>{
  const v=env({enabled:false});const original=v.scope.renderDashboard;
  vm.runInNewContext(uiSource,v.scope);
  assert.equal(v.scope.renderDashboard,original);assert.equal(v.control.children.length,0);

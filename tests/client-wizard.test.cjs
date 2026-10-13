@@ -36,8 +36,8 @@ test('invalid step and unknown read function reject instead of silently continui
  assert.throws(()=>w.validateStep(7,read));
  assert.throws(()=>w.validateStep(0,null));
 });
-test('wizard UI is inactive without V2 opt-in and does not mutate original behavior',()=>{
- const fake={window:{location:{search:''}},URLSearchParams,CCV2ClientWizard:w,document:{getElementById(){throw Error('should never enter DOM')}}};
+test('wizard UI remains inactive in explicit ?workspace=v1 rollback mode',()=>{
+ const fake={window:{location:{search:'?workspace=v1'}},URLSearchParams,CCV2ClientWizard:w,document:{getElementById(){throw Error('should never enter DOM')}}};
  assert.doesNotThrow(()=>vm.runInNewContext(ui,fake));
 });
 test('onboarding uses existing owner form, confirmation and submit rather than a new Supabase record',()=>{
@@ -56,7 +56,7 @@ test('successful V2-only client creation offers to create the first material in 
  const src=fs.readFileSync(path.join(root,'clients-v9.js'),'utf8');
  assert.match(src,/await loadClients\(\)/);
  assert.match(src,/if\(mode==='create'\)/);
- assert.match(src,/new URLSearchParams\(window\.location\.search\)\.get\('workspace'\)==='v2'/);
+ assert.match(src,/\['v1','legacy'\]\.includes\(new URLSearchParams/);
  assert.match(src,/window\.confirm\('Клиент создан/);
  assert.match(src,/openAdd\(\)/);
  assert.match(src,/owner_create_client/);
