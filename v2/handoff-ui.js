@@ -58,7 +58,7 @@
     chat.type='button';chat.setAttribute('aria-label','Открыть ChatGPT в новой вкладке');
     chat.addEventListener('click',()=>{window.open('https://chatgpt.com/','_blank','noopener,noreferrer');});
     add(head,heading,chat,close);
-    const generate=element('button','ccv2-create ccv2-generate-button','✦ Создать с ИИ');
+    const generate=element('button','ccv2-check ccv2-generate-button','✦ Создать с ИИ');
     generate.type='button';generate.id='ccv2GenerateButton';
     generate.setAttribute('aria-label','Подготовить текст автоматически для выбранного материала и клиента');
     head.appendChild(generate);
