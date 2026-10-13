@@ -50,3 +50,22 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test actual V2 HTML against mocked Supabase (no production API requests)
         run: node tests/browser-smoke.cjs
+  webkit-smoke:
+    name: Safari WebKit isolated desktop and mobile smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser runner
+        run: npm install --no-save --no-package-lock playwright@1.56.1
+      - name: Install WebKit engine and runtime dependencies
+        run: npx playwright install --with-deps webkit
+      - name: Test actual V2 with mock-only owner and client data in WebKit
+        env:
+          BROWSER_ENGINE: webkit
+        run: node tests/browser-smoke.cjs

@@ -1,10 +1,11 @@
-/* Network-isolated Chromium smoke test of the REAL V2 page, without production login or DB writes. */
+/* Network-isolated browser smoke test of the REAL V2 page, without production login or DB writes. */
 'use strict';
 const assert=require('node:assert/strict');
 const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
+const engine=process.env.BROWSER_ENGINE==='webkit'?'webkit':'chromium';
 const root=path.resolve(__dirname,'..');
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json','.svg':'image/svg+xml','.png':'image/png'};
 function server(){
@@ -68,7 +69,7 @@ function mockSupabase(){
 async function main(){
  const app=server();await new Promise(resolve=>app.listen(0,'127.0.0.1',resolve));
  const url='http://127.0.0.1:'+app.address().port+'/?workspace=v2';
- const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ const browser=await (engine==='webkit'?webkit:chromium).launch({headless:true,...(engine==='chromium'?{args:['--no-sandbox']}: {})});
  const outcomes=[];
  try{
   for(const kind of ['desktop','mobile']){
@@ -124,6 +125,29 @@ async function main(){
    await page.locator('#clientManagerV9.on').waitFor({state:'hidden'});
    assert.equal(await page.locator('#client option').count(),2,'created one new canonical client');
    assert.equal((await page.evaluate(()=>window.__testStore.writes.length)),0,'onboarding must not insert content on its own');
+   // First material lives inside the newly created client; reject an accidental duplicate.
+   const createdClientId=await page.locator('#client').inputValue();
+   const materialTitle='Тест первого материала '+engine+' '+kind;
+   await page.locator('#addBtn').click();
+   await page.locator('#fTitle').fill(materialTitle);
+   await page.locator('#fFormat').selectOption('Post');
+   await page.locator('#fChannel').selectOption('Telegram');
+   await page.locator('#fCaption').fill('Демонстрационный текст');
+   await page.locator('#saveAdd').click();
+   await page.waitForFunction(title=>window.__testStore.content_items.some(x=>x.title===title),materialTitle);
+   assert.equal(await page.evaluate(title=>window.__testStore.content_items.filter(x=>x.title===title).length,materialTitle),1);
+   assert.equal(await page.evaluate(title=>window.__testStore.content_items.find(x=>x.title===title)?.client_id,materialTitle),createdClientId);
+   await page.locator('#addBtn').click();
+   await page.locator('#fTitle').fill(materialTitle);
+   await page.locator('#fFormat').selectOption('Post');
+   await page.locator('#fChannel').selectOption('Telegram');
+   page.once('dialog',dialog=>dialog.dismiss());
+   await page.locator('#saveAdd').click();
+   assert.equal(await page.evaluate(title=>window.__testStore.content_items.filter(x=>x.title===title).length,materialTitle),1,'declining duplicate must not create a second record');
+   await page.evaluate(()=>closeAdd(true));
+   await page.locator('#client').selectOption('11111111-1111-4111-8111-111111111111');
+   await page.waitForFunction(id=>state.clientId===id,'11111111-1111-4111-8111-111111111111');
+   assert.equal(await page.evaluate(title=>state.content.some(x=>x.title===title),materialTitle),false,'foreign client must not see newly created material');
    assert.equal(errors.length,0,kind+' page errors: '+errors.join(' | '));
    outcomes.push(kind+': login stub, V2 workspace, 6-step client form, one owner RPC and no duplicate content OK');
    await context.close();
