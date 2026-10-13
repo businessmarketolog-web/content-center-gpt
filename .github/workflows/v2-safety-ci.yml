@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - 'feat/content-center-v2-safety-*'
+      - 'release/v2-candidate-*'
   pull_request:
     branches:
       - 'feat/content-center-v2-foundation-20260923'
+      - 'main'
   workflow_dispatch:
 
 permissions:
