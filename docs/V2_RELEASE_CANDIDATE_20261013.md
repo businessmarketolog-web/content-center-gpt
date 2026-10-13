@@ -34,3 +34,11 @@ Keep main unchanged during review. Run complete CI on candidate branch and draft
 After authorized merge, test owner code login, V2 workspace, client creation, content editor and Safari PWA.
 On failure, revert deployment to backup/main-before-v2-20261013 while leaving Supabase data untouched.
 Status: RELEASE CANDIDATE DRAFT; PRODUCTION MAIN UNCHANGED.
+
+## Verified Safari draft edit on 13 October 2026
+- The owner explicitly confirmed that edits to the existing Reels remained after saving and reloading the authenticated iPhone Safari review page.
+- Independent, read-only production SQL corroborated one linked `[V2 QA]` material, `status=draft`, a nonempty caption, `updated_at > created_at` and no scheduled/published state. The source still contained exactly 3 clients and 9 content items. The caption was NOT retrieved or copied to CI.
+- This completes the specific real-iPhone authenticated client creation → Reels creation → text edit → save → reload verification gate.
+- The auth-review client-side mutation guard is an accident-prevention feature, NOT a substitute for server RLS. Read-only policy inspection found membership-based SELECT and owner/editor INSERT+UPDATE, including UPDATE WITH CHECK. Anonymous requests returned no client or content rows.
+- Unresolved: an authenticated two-user isolation test, installation/update of the *actual* iPhone PWA (only Chromium synthetic PWA cache update was checked), and full physical Supabase recovery on Free. No social publishing was tested.
+- Production release remains DRAFT pending explicit cutover decision. Existing production site and data remain unchanged by these audits.
