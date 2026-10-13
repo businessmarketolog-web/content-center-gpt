@@ -22,7 +22,7 @@ function server(){
 function mockSupabase(){
  const clientId='11111111-1111-4111-8111-111111111111';
  const itemId='22222222-2222-4222-8222-222222222222';
- const demo={clients:[{id:clientId,name:'Демо Агентство',business_type:'Турагентство',brand_rules:{},active:true}],
+ const demo={clients:[{id:clientId,name:'Демо Агентство',business_type:'Турагентство',brand_rules:{audience:'Исходный клиент — деловые поездки',primary_font:'Только Первый Бренд'},active:true}],
    content_items:[{id:itemId,client_id:clientId,title:'Обзор Пхукета',format:'Reels',channel:'Instagram',status:'draft',brief:'Обзор пляжей',caption:'Первый текст',media_urls:[],scheduled_at:null,created_at:'2026-10-01T10:00:00Z'}],writes:[],rpcs:[]};
  window.__testStore=demo;
  function chain(table){
@@ -57,7 +57,12 @@ function mockSupabase(){
    demo.clients.push({id,name:params.p_name,business_type:params.p_business_type,brand_rules:params.p_brand_rules,active:true});
    return Promise.resolve({data:id,error:null});
   }
-  if(name==='owner_update_client')return Promise.resolve({data:params.p_client_id,error:null});
+  if(name==='owner_update_client'){
+   const target=demo.clients.find(c=>c.id===params.p_client_id);
+   if(!target)return Promise.resolve({data:null,error:{message:'client not found'}});
+   Object.assign(target,{name:params.p_name,business_type:params.p_business_type,brand_rules:params.p_brand_rules});
+   return Promise.resolve({data:params.p_client_id,error:null});
+  }
   return Promise.resolve({data:null,error:{message:'unexpected rpc: '+name}});
  }
  const session={user:{id:'55555555-5555-4555-8555-555555555555',email:'owner@content-center.local',app_metadata:{role:'content_center_owner'}},access_token:'fake-non-functional-token'};
@@ -100,6 +105,10 @@ async function main(){
    assert.equal(legacy.unexpectedRpcs,0,'No automatic RPCs on legacy boot');
    await page.goto(url,{waitUntil:'load'});
    await page.locator('#dashboard .ccv2-shell').waitFor({timeout:15000});
+   await page.locator('#ccv2-brand-dna').waitFor();
+   assert.match(await page.locator('#ccv2-brand-dna').innerText(),/Только Первый Бренд/);
+   const context1=await page.evaluate(()=>CCV2BrandDNA.prompt(currentClient(),state.clientId));
+   assert.match(context1,/Исходный клиент — деловые поездки/);
    // Exercise the real V2 drawer: a locally edited deadline must survive GPT handoff.
    const handoffButton=page.locator('[data-ccv2-handoff]').first();
    await handoffButton.waitFor();
@@ -129,6 +138,16 @@ async function main(){
    const next=page.locator('#clientManagerV9 .ccv2-client-progress');
    assert.match(await next.innerText(),/Шаг 1 из 6/);
    for(let step=1;step<=5;step++){
+    if(step===3)await page.locator('#cm_interests').fill('Аквапарки и семейные отели QA');
+    if(step===4){
+      await page.locator('#cm_tone').fill('Экспертный дружелюбный QA');
+      await page.locator('#cm_writing_rules').fill('Короткие фразы QA, без канцелярита');
+      await page.locator('#cm_content_mix').fill('80% экспертный контент QA');
+    }
+    if(step===5){
+      await page.locator('#cm_primary_font').fill('Museo QA');
+      await page.locator('#cm_overlay_rules').fill('Матовая полупрозрачная подложка QA');
+    }
     await page.locator('#clientManagerV9 button', {hasText:'Продолжить'}).click();
     assert.match(await next.innerText(),new RegExp('Шаг '+(step+1)+' из 6'));
    }
@@ -138,8 +157,30 @@ async function main(){
    await page.waitForFunction(()=>window.__testStore.rpcs.some(x=>x.name==='owner_create_client'));
    assert.equal(await page.evaluate(()=>window.__testStore.rpcs.filter(x=>x.name==='owner_create_client').length),1);
    await page.locator('#clientManagerV9.on').waitFor({state:'hidden'});
+   const brandRpc=await page.evaluate(()=>window.__testStore.rpcs.find(x=>x.name==='owner_create_client').params.p_brand_rules);
+   assert.equal(brandRpc.primary_font,'Museo QA');
+   assert.equal(brandRpc.overlay_rules,'Матовая полупрозрачная подложка QA');
    assert.equal(await page.locator('#client option').count(),2,'created one new canonical client');
    assert.equal((await page.evaluate(()=>window.__testStore.writes.length)),0,'onboarding must not insert content on its own');
+   await page.waitForFunction(()=>document.querySelector('#ccv2-brand-dna')?.innerText.includes('Museo QA'));
+   assert.match(await page.locator('#ccv2-brand-dna').innerText(),/Матовая полупрозрачная подложка QA/);
+   // Edit the original canonical client through owner_update_client (no duplicates).
+   await page.locator('#clientSettingsBtnV9').click();
+   for(let n=0;n<3;n++)await page.locator('#clientManagerV9 button',{hasText:'Продолжить'}).click();
+   await page.locator('#cm_writing_rules').fill('Новый утверждённый стиль QA');
+   for(let n=0;n<2;n++)await page.locator('#clientManagerV9 button',{hasText:'Продолжить'}).click();
+   await page.locator('#clientManagerSaveV9').click();
+   await page.locator('#clientManagerV9.on').waitFor({state:'hidden'});
+   const updates=await page.evaluate(()=>window.__testStore.rpcs.filter(x=>x.name==='owner_update_client'));
+   assert.equal(updates.length,1);
+   assert.equal(updates[0].params.p_brand_rules.writing_rules,'Новый утверждённый стиль QA');
+   assert.equal(await page.locator('#client option').count(),2,'DNA update must not duplicate client');
+   const newClientId=await page.locator('#client').inputValue();
+   await page.locator('#client').selectOption('11111111-1111-4111-8111-111111111111');
+   await page.waitForFunction(()=>document.querySelector('#ccv2-brand-dna')?.innerText.includes('Только Первый Бренд'));
+   assert.doesNotMatch(await page.locator('#ccv2-brand-dna').innerText(),/Museo QA|Матовая полупрозрачная подложка QA/);
+   await page.locator('#client').selectOption(newClientId);
+   await page.waitForFunction(()=>document.querySelector('#ccv2-brand-dna')?.innerText.includes('Museo QA'));
    // First material lives inside the newly created client; reject an accidental duplicate.
    const createdClientId=await page.locator('#client').inputValue();
    const materialTitle='Тест первого материала '+engine+' '+kind;

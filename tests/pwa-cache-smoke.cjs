@@ -10,8 +10,8 @@ const assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
-const current='content-center-v19-20261013-v2g';
-const next='content-center-v20-pwa-synthetic-qa';
+const current='content-center-v20-20261013-branddna1';
+const next='content-center-v21-pwa-synthetic-qa';
 assert.ok(source.includes(current),'Unexpected service worker version; update PWA smoke fixture');
 let sw=source;
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
@@ -51,10 +51,10 @@ const app=http.createServer((req,res)=>{
   assert.equal(status.scope,origin+'/');
   assert.ok(status.keys.includes(current),'PWA assets were not cached on initial service worker install');
   const urls=await page.evaluate(async()=>{
-   const c=await caches.open('content-center-v19-20261013-v2g');
+   const c=await caches.open('content-center-v20-20261013-branddna1');
    const all=await c.keys();return all.map(k=>new URL(k.url).pathname);
   });
-  for(const required of ['/index.html','/v2/workspace.js','/v2/content-dedup-ui.js','/clients-v9.js']){
+  for(const required of ['/index.html','/v2/workspace.js','/v2/content-dedup-ui.js','/clients-v9.js','/v2/brand-dna-ui.js','/v2/brand-dna-model.js']){
    assert.ok(urls.includes(required),'Missing offline PWA asset '+required);
   }
   // New code pushed to server: automatic activation should remove old
@@ -66,7 +66,7 @@ const app=http.createServer((req,res)=>{
   });
   await page.waitForFunction(async()=>{
    const names=await caches.keys();
-   return names.includes('content-center-v20-pwa-synthetic-qa')&&!names.includes('content-center-v19-20261013-v2g');
+   return names.includes('content-center-v21-pwa-synthetic-qa')&&!names.includes('content-center-v20-20261013-branddna1');
   },null,{timeout:30000});
   await page.reload();
   const check=await page.evaluate(()=>({
