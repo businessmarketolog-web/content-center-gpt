@@ -1,0 +1,20 @@
+# Private database exports, credentials, and local development state
+.env
+.env.*
+!.env.example
+*.pgpass
+pgpass.conf
+*.dump
+*.backup
+*.sql.gz
+*.sql.zip
+roles.sql
+data.sql
+schema.sql
+backup-manifest.json
+/private-backups/
+/backups/
+/dist-private/
+/node_modules/
+__pycache__/
+*.pyc

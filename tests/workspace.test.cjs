@@ -82,3 +82,10 @@ test('preflight button inspects selected-client material only and does not write
   const original=note.innerHTML;button.dataset.ccv2Check='foreign';button.click();
   assert.equal(note.innerHTML,original);
 });
+
+test('workflow explains one canonical client and content record instead of introducing duplicate data forms',()=>{
+ const src=fs.readFileSync(path.join(__dirname,'../v2/workspace.js'),'utf8');
+ assert.match(src,/Создайте один раз/);
+ assert.match(src,/Одна карточка на публикацию/);
+ assert.match(src,/фиксируйте ссылку на фактически опубликованный/);
+});

@@ -33,6 +33,11 @@
       '<header class="ccv2-header"><div><div class="ccv2-eyebrow">РАБОЧЕЕ ПРОСТРАНСТВО · V2</div>'+
       '<h2>Сегодня в работе</h2><p>Клиент: <strong>'+e(model.clientName)+'</strong>. Действия по текущему проекту без дублирования карточек.</p></div>'+
       '<button class="ccv2-create" type="button" data-ccv2-create>+ Новый материал</button></header>'+
+      '<section class="ccv2-workflow" aria-label="Где создавать клиента и контент">'+
+      '<div><span class="ccv2-workflow-step">01 · ПРОФИЛЬ</span><strong>Клиент</strong><p>Создайте один раз в «+ Новый клиент» рядом с выбором проекта. Правила редактируйте в «Настройках клиента».</p></div>'+
+      '<div><span class="ccv2-workflow-step">02 · ПРОИЗВОДСТВО</span><strong>Материал и задача</strong><p>Одна карточка на публикацию: бриф, дата и статус в Контент центре. ChatGPT готовит правки к этой карточке.</p></div>'+
+      '<div><span class="ccv2-workflow-step">03 · ВЫПУСК</span><strong>Согласование и публикация</strong><p>Проверяйте результат и фиксируйте ссылку на фактически опубликованный материал.</p></div>'+
+      '</section>'+
       '<section class="ccv2-stats" aria-label="Сводка по материалам">'+
       metric('Требуют внимания',model.failed,'publishing','ccv2-urgent')+
       metric('На согласовании',model.review,'approvals','')+
