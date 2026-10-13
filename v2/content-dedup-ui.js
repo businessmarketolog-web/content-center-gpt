@@ -21,4 +21,8 @@
     }
     return original.apply(this,args);
   };
+  // app.js assigns saveAdd.onclick before V2 loads; updating only the global function
+  // does not replace the old handler reference. Wire the guarded save explicitly.
+  const saveButton=$('saveAdd');
+  if(saveButton)saveButton.onclick=addContent;
 })();
