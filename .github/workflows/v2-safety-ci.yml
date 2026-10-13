@@ -69,3 +69,19 @@ jobs:
         env:
           BROWSER_ENGINE: webkit
         run: node tests/browser-smoke.cjs
+
+  backup-integrity:
+    name: Offline database export integrity and tamper guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test private export integrity with synthetic SQL only
+        run: python -m unittest discover -s tests -p 'test_cc_backup_guard.py' -v
