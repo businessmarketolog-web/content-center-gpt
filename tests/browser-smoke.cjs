@@ -83,6 +83,21 @@ async function main(){
     if(requested.startsWith('http://127.0.0.1:'))return route.continue();
     return route.abort('blockedbyclient');
    });
+   // Production safety gate: ordinary URL must remain the legacy owner interface.
+   await page.goto(url.replace('/?workspace=v2','/'),{waitUntil:'load'});
+   await page.waitForFunction(()=>typeof state!=='undefined'&&state.clients?.length>0);
+   const legacy=await page.evaluate(()=>({
+     enabled:document.documentElement.classList.contains('cc-v2'),
+     v2Shell:!!document.querySelector('#dashboard .ccv2-shell'),
+     clientWizard:document.querySelector('#clientFormV9')?.dataset.ccv2Wizard==='1',
+     unexpectedWrites:window.__testStore.writes.length,
+     unexpectedRpcs:window.__testStore.rpcs.length
+   }));
+   assert.equal(legacy.enabled,false,'Bare production URL must NOT turn V2 on');
+   assert.equal(legacy.v2Shell,false,'Bare URL must keep legacy dashboard');
+   assert.equal(legacy.clientWizard,false,'Bare URL must not replace existing client form');
+   assert.equal(legacy.unexpectedWrites,0,'No automatic writes on legacy boot');
+   assert.equal(legacy.unexpectedRpcs,0,'No automatic RPCs on legacy boot');
    await page.goto(url,{waitUntil:'load'});
    await page.locator('#dashboard .ccv2-shell').waitFor({timeout:15000});
    // Exercise the real V2 drawer: a locally edited deadline must survive GPT handoff.
