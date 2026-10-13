@@ -85,3 +85,27 @@ jobs:
           python-version: '3.11'
       - name: Test private export integrity with synthetic SQL only
         run: python -m unittest discover -s tests -p 'test_cc_backup_guard.py' -v
+
+  postgres-recovery-smoke:
+    name: PostgreSQL 17 disposable real dump and restore (fictional data)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    container: postgres:17
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-fictional-password-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore genuine pg_dump fixture in separate disposable database
+        env:
+          PGHOST: postgres
+        run: bash tests/postgres-recovery-smoke.sh
