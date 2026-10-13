@@ -1,7 +1,7 @@
 /* Six-step presentation of the existing owner client form. All saving stays in clients-v9.js via the same owner RPC. */
 (function(){
  'use strict';
- if(typeof window==='undefined'||!window.location||new URLSearchParams(window.location.search).get('workspace')!=='v2'||
+ if(typeof window==='undefined'||!window.location||['v1','legacy'].includes(new URLSearchParams(window.location.search).get('workspace'))||
     typeof document==='undefined'||typeof CCV2ClientWizard==='undefined')return;
  const M=CCV2ClientWizard;
  const form=document.getElementById('clientFormV9');

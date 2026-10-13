@@ -65,8 +65,8 @@ test('V2 Brand DNA navigation is added to header and sidebar and opens selected 
  assert.match(uiCode,/panel\.scrollIntoView/);
  assert.doesNotMatch(uiCode,/location\.reload\(|window\.location\s*=/);
 });
-test('brand dashboard is disabled for old legacy URL',()=>{
- const scope={window:{location:{search:''}},URLSearchParams,document:{querySelector(){throw Error('must not run')}},CCV2BrandDNA:model()};
+test('brand dashboard is disabled for explicit ?workspace=v1 rollback',()=>{
+ const scope={window:{location:{search:'?workspace=v1'}},URLSearchParams,document:{querySelector(){throw Error('must not run')}},CCV2BrandDNA:model()};
  assert.doesNotThrow(()=>vm.runInNewContext(uiCode,scope));
 });
 test('Brand DNA uses only original owner editor and existing client record, with no database writes',()=>{

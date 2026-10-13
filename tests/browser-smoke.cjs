@@ -88,8 +88,8 @@ async function main(){
     if(requested.startsWith('http://127.0.0.1:'))return route.continue();
     return route.abort('blockedbyclient');
    });
-   // Production safety gate: ordinary URL must remain the legacy owner interface.
-   await page.goto(url.replace('/?workspace=v2','/'),{waitUntil:'load'});
+   // Explicit emergency fallback stays legacy. Do not risk current owner's installed PWA data.
+   await page.goto(url.replace('?workspace=v2','?workspace=v1'),{waitUntil:'load'});
    await page.waitForFunction(()=>typeof state!=='undefined'&&state.clients?.length>0);
    const legacy=await page.evaluate(()=>({
      enabled:document.documentElement.classList.contains('cc-v2'),
@@ -98,13 +98,28 @@ async function main(){
      unexpectedWrites:window.__testStore.writes.length,
      unexpectedRpcs:window.__testStore.rpcs.length
    }));
-   assert.equal(legacy.enabled,false,'Bare production URL must NOT turn V2 on');
-   assert.equal(legacy.v2Shell,false,'Bare URL must keep legacy dashboard');
-   assert.equal(legacy.clientWizard,false,'Bare URL must not replace existing client form');
-   assert.equal(legacy.unexpectedWrites,0,'No automatic writes on legacy boot');
-   assert.equal(legacy.unexpectedRpcs,0,'No automatic RPCs on legacy boot');
-   assert.equal(await page.locator('#ccv2BrandNavTop').count(),0,'Legacy URL must not show V2-only Brand DNA controls');
-   assert.equal(await page.locator('#ccv2BrandNavMenu').count(),0,'Legacy sidebar must remain untouched');
+   assert.equal(legacy.enabled,false,'Explicit ?workspace=v1 must keep legacy mode');
+   assert.equal(legacy.v2Shell,false,'Fallback must not activate the V2 dashboard');
+   assert.equal(legacy.clientWizard,false,'Fallback must not replace the legacy client form');
+   assert.equal(legacy.unexpectedWrites,0,'No automatic writes during legacy boot');
+   assert.equal(legacy.unexpectedRpcs,0,'No automatic RPCs during legacy boot');
+   assert.equal(await page.locator('#ccv2BrandNavTop').count(),0,'Legacy fallback must not show V2 Brand DNA');
+   assert.equal(await page.locator('#ccv2BrandNavMenu').count(),0,'Legacy fallback menu untouched');
+   // Old home-screen icon launches the bare root. It MUST now display V2 + Brand DNA.
+   await page.goto(url.replace('/?workspace=v2','/'),{waitUntil:'load'});
+   await page.locator('#dashboard .ccv2-shell').waitFor({timeout:15000});
+   await page.locator('#ccv2-brand-dna').waitFor();
+   assert.equal(await page.locator('#ccv2BrandNavTop').count(),1,'Old icon root must show Brand DNA in top bar');
+   assert.equal(await page.locator('#ccv2BrandNavMenu').count(),1,'Old icon root must show Brand DNA in sidebar');
+   const rootBoot=await page.evaluate(()=>({
+     v2:document.documentElement.classList.contains('cc-v2'),
+     writes:window.__testStore.writes.length,
+     rpcs:window.__testStore.rpcs.length
+   }));
+   assert.equal(rootBoot.v2,true,'Bare home-screen root must activate V2');
+   assert.equal(rootBoot.writes,0,'Activating V2 must not write materials');
+   assert.equal(rootBoot.rpcs,0,'Activating V2 must not call owner RPC');
+   // The explicit V2 deep link remains compatible as well.
    await page.goto(url,{waitUntil:'load'});
    await page.locator('#dashboard .ccv2-shell').waitFor({timeout:15000});
    await page.locator('#ccv2-brand-dna').waitFor();

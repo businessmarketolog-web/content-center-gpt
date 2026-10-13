@@ -1,8 +1,8 @@
-/* CC V2 is opt-in on a separate review branch. Existing owner auth and editor stay intact. */
+/* Content Center V2 is the default workspace. Existing owner auth/editor stay intact; ?workspace=v1 is an emergency legacy fallback. */
 (function(){
   'use strict';
   if(typeof window==='undefined'||!window.location||
-     new URLSearchParams(window.location.search).get('workspace')!=='v2')return;
+     ['v1','legacy'].includes(new URLSearchParams(window.location.search).get('workspace')))return;
   if(typeof renderDashboard!=='function'||typeof CCV2Model==='undefined')return;
   document.documentElement.classList.add('cc-v2');
   const oldDashboard=renderDashboard;

@@ -101,7 +101,7 @@ async function save(event){
    show('dashboard');
    toast('Клиент создан. Первый материал можно создать в этом же проекте.');
    if(typeof window!=='undefined'&&window.location&&
-      new URLSearchParams(window.location.search).get('workspace')==='v2'&&
+      !['v1','legacy'].includes(new URLSearchParams(window.location.search).get('workspace'))&&
       window.confirm('Клиент создан. Открыть создание первого материала сейчас?')){
      openAdd();
    }

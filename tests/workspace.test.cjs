@@ -39,12 +39,25 @@ test('HTML escaping covers markup and attribute injection',()=>{
     '&lt;img src=x onerror=&quot;boom&quot;&gt;');
   assert.equal(model().escapeHtml("Tom & O'Neil"),'Tom &amp; O&#39;Neil');
 });
-test('new workspace stays opt-in and does not change default live UI',()=>{
+test('explicit ?workspace=v1 keeps legacy dashboard available for rollback',()=>{
   const baseline=function baseline(){};
-  const scope={window:{location:{search:''}},URLSearchParams,renderDashboard:baseline,CCV2Model:model(),document:{}};
+  const scope={window:{location:{search:'?workspace=v1'}},URLSearchParams,renderDashboard:baseline,CCV2Model:model(),document:{}};
   vm.runInNewContext(uiSrc,scope);
   assert.equal(scope.renderDashboard,baseline);
 });
+test('bare production URL enables V2 instead of the legacy dashboard',()=>{
+  const baseline=function legacyDashboard(){};
+  let klass='';
+  const scope={window:{location:{search:''}},URLSearchParams,
+    renderDashboard:baseline,CCV2Model:model(),
+    state:{session:null,clientId:null},
+    document:{documentElement:{classList:{add(value){klass=value;}}}},
+    $(){return null},console};
+  vm.runInNewContext(uiSrc,scope);
+  assert.notEqual(scope.renderDashboard,baseline);
+  assert.equal(klass,'cc-v2');
+});
+
 test('preview renders selected client only, with escaped title and honest publication note',()=>{
   const dashboard={innerHTML:'',querySelectorAll(){return []},querySelector(){return null}};
   const scope={window:{location:{search:'?workspace=v2'}},
@@ -88,4 +101,15 @@ test('workflow explains one canonical client and content record instead of intro
  assert.match(src,/Создайте один раз/);
  assert.match(src,/Одна карточка на публикацию/);
  assert.match(src,/фиксируйте ссылку на фактически опубликованный/);
+});
+
+test('existing icon and new PWA installations open V2 by default; legacy remains explicit',()=>{
+ const manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.webmanifest'),'utf8'));
+ assert.equal(manifest.start_url,'./?workspace=v2');
+ assert.equal(manifest.scope,'./');
+ for(const file of ['v2/workspace.js','v2/handoff-ui.js','v2/brand-dna-ui.js','v2/client-wizard-ui.js','v2/content-dedup-ui.js']){
+  const content=fs.readFileSync(path.join(root,file),'utf8');
+  assert.match(content,/\['v1','legacy'\]\.includes/,'Missing explicit V1 fallback: '+file);
+  assert.ok(!content.includes("get('workspace')!=='v2'"),'Old V2 opt-in guard remains: '+file);
+ }
 });

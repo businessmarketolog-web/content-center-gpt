@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   if(typeof window==='undefined'||!window.location||
-     new URLSearchParams(window.location.search).get('workspace')!=='v2'||
+     ['v1','legacy'].includes(new URLSearchParams(window.location.search).get('workspace'))||
      typeof addContent!=='function'||typeof CCV2Duplicate==='undefined')return;
   const original=addContent;
   addContent=async function(...args){
