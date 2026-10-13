@@ -13,9 +13,13 @@ const read=key=>values[key];
 test('six steps cover each existing client profile field exactly once',()=>{
  assert.equal(w.STEPS.length,6);
  const names=w.STEPS.flatMap(x=>Array.from(x.fields));
- assert.equal(new Set(names).size,10);
- assert.equal(names.length,10);
- assert.deepEqual(JSON.parse(JSON.stringify(names.sort())),Object.keys(values).sort());
+ assert.equal(new Set(names).size,24);
+ assert.equal(names.length,24);
+ for(const key of Object.keys(values))assert.ok(names.includes(key),'missing existing field '+key);
+ for(const key of ['interests','pain_points','positioning','writing_rules','taboo_phrases',
+   'cta_style','brand_colors','typography_rules','visual_style','overlay_rules','format_rules',
+   'content_pillars','content_mix','approved_examples'])
+   assert.ok(names.includes(key),'missing Brand DNA field '+key);
 });
 test('valid owner client configuration passes without building any shadow record',()=>{
  for(let step=0;step<6;step++)assert.equal(w.validateStep(step,read),true);

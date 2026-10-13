@@ -100,6 +100,11 @@ async function main(){
    assert.equal(legacy.unexpectedRpcs,0,'No automatic RPCs on legacy boot');
    await page.goto(url,{waitUntil:'load'});
    await page.locator('#dashboard .ccv2-shell').waitFor({timeout:15000});
+   // Client Brand DNA is drawn for the selected client, never the entire workspace.
+   await page.locator('#ccv2-brand-dna').waitFor({timeout:15000});
+   assert.match(await page.locator('#ccv2-brand-dna').innerText(),/Демо Агентство/);
+   assert.equal(await page.evaluate(()=>CCV2BrandDNA.build(currentClient(),state.clientId)?.clientId===state.clientId),true);
+
    // Exercise the real V2 drawer: a locally edited deadline must survive GPT handoff.
    const handoffButton=page.locator('[data-ccv2-handoff]').first();
    await handoffButton.waitFor();
@@ -142,6 +147,9 @@ async function main(){
    assert.equal((await page.evaluate(()=>window.__testStore.writes.length)),0,'onboarding must not insert content on its own');
    // First material lives inside the newly created client; reject an accidental duplicate.
    const createdClientId=await page.locator('#client').inputValue();
+   await page.waitForFunction(id=>state.clientId===id&&!!document.querySelector('#ccv2-brand-dna'),createdClientId);
+   assert.equal(await page.evaluate(()=>CCV2BrandDNA.build(currentClient(),state.clientId)?.clientId===state.clientId),true);
+
    const materialTitle='Тест первого материала '+engine+' '+kind;
    await page.locator('#addBtn').click();
    await page.locator('#fTitle').fill(materialTitle);
@@ -166,6 +174,9 @@ async function main(){
    assert.equal(await page.evaluate(title=>window.__testStore.content_items.filter(x=>x.title===title).every(x=>x.client_id===state.clientId),materialTitle),true,'intentional duplicate must stay client-scoped');
    await page.locator('#client').selectOption('11111111-1111-4111-8111-111111111111');
    await page.waitForFunction(id=>state.clientId===id,'11111111-1111-4111-8111-111111111111');
+   await page.waitForFunction(()=>document.querySelector('#ccv2-brand-dna')?.textContent.includes('Демо Агентство'));
+   assert.equal(await page.evaluate(()=>CCV2BrandDNA.build(currentClient(),state.clientId)?.clientId===state.clientId),true);
+
    assert.equal(await page.evaluate(title=>state.content.some(x=>x.title===title),materialTitle),false,'foreign client must not see newly created material');
    assert.equal(errors.length,0,kind+' page errors: '+errors.join(' | '));
    outcomes.push(kind+': login stub, V2 workspace, 6-step client form, one owner RPC and no duplicate content OK');

@@ -1,0 +1,15 @@
+/* V2 brand profile: responsive, typography-instruction aware and scoped dashboard card. */
+.ccv2-brand-dna{margin:16px 0 20px;border:1px solid var(--line2);border-radius:18px;background:var(--panel);padding:18px}
+.ccv2-brand-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.ccv2-brand-kicker{font-size:11px;letter-spacing:.09em;color:var(--cyan);font-weight:750}
+.ccv2-brand-head h2{margin:6px 0 7px;font-size:20px}
+.ccv2-brand-sub,.ccv2-brand-note,.ccv2-brand-progress{color:var(--muted);line-height:1.55;margin:4px 0 13px;font-size:13px}
+.ccv2-brand-actions{display:flex;gap:8px;flex-wrap:wrap}
+.ccv2-brand-actions button{min-height:44px;white-space:normal}
+.ccv2-brand-highlights{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.ccv2-brand-highlight{border:1px solid var(--line);border-radius:11px;padding:11px;min-width:0}
+.ccv2-brand-highlight strong{display:block;font-size:12px;color:var(--cyan)}
+.ccv2-brand-highlight p{overflow-wrap:anywhere;white-space:pre-wrap;font-size:13px;line-height:1.45;margin:7px 0 0;max-height:7em;overflow:auto}
+.ccv2-brand-note{margin:14px 0 0}
+@media(max-width:980px){.ccv2-brand-highlights{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.ccv2-brand-dna{padding:13px}.ccv2-brand-highlights{grid-template-columns:1fr}.ccv2-brand-actions,.ccv2-brand-actions button{width:100%}}
