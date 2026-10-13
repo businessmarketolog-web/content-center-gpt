@@ -85,7 +85,12 @@ async function save(event){
   await loadClients();
   if(mode==='create'){
    show('dashboard');
-   toast('Клиент создан. Выберите «Материал» для его первой публикации.');
+   toast('Клиент создан. Первый материал можно создать в этом же проекте.');
+   if(typeof window!=='undefined'&&window.location&&
+      new URLSearchParams(window.location.search).get('workspace')==='v2'&&
+      window.confirm('Клиент создан. Открыть создание первого материала сейчас?')){
+     openAdd();
+   }
   }else{
    toast('Настройки клиента обновлены без создания нового проекта.');
    show(state.view);
