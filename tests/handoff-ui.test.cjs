@@ -62,7 +62,7 @@ test('opening own draft builds in-memory transfer UI without any database call',
  const button=v.control.children[0];button.listeners.click();
  assert.equal(v.shell.children.length,1);
  const panel=v.shell.children[0];assert.equal(panel.id,'ccv2-handoff');
- assert.equal(panel.children[0].children[0].textContent,'Правки через ChatGPT');
+ assert.equal(panel.children[0].children[0].textContent,'ИИ-редактор материала');
  assert.equal(v.scope.state.content[0].caption,'Текст');
 });
 
@@ -71,9 +71,7 @@ test('validated GPT reply only stages text in existing editor and never saves on
  v.control.children[0].listeners.click();
  const panel=v.shell.children[0];
  const reply=panel.children[4].children[0];
- reply.value=JSON.stringify({schema:'content-center-handoff/1',
-  request_id:'44444444-4444-4444-8444-444444444444',client_id:clientId,
-  content_item_id:itemId,changes:{caption:'Текст после ChatGPT'}});
+ reply.value='Текст после ChatGPT';
  panel.children[5].listeners.click();
  const transfer=panel.children[8];assert.equal(transfer.disabled,false);
  transfer.listeners.click();
@@ -87,10 +85,7 @@ function prepareTransfer(v){
  vm.runInNewContext(uiSource,v.scope);
  v.control.children[0].listeners.click();
  const panel=v.shell.children[0];
- panel.children[4].children[0].value=JSON.stringify({
-  schema:'content-center-handoff/1',request_id:'44444444-4444-4444-8444-444444444444',
-  client_id:clientId,content_item_id:itemId,changes:{caption:'Обновлённый текст'}
- });
+ panel.children[4].children[0].value='Обновлённый текст';
  panel.children[5].listeners.click();
  assert.equal(panel.children[8].disabled,false);
  return panel;
@@ -112,4 +107,44 @@ test('pristine open editor can receive validated ChatGPT changes without a datab
  assert.deepEqual(v.openCalls,[itemId]);
  assert.equal(v.fields.dCaption.value,'Обновлённый текст');
  assert.equal(v.scope.state.content[0].caption,'Текст');
+});
+
+test('human-readable workflow defaults to ordinary text and selected client Brand DNA',()=>{
+ const v=env();vm.runInNewContext(uiSource,v.scope);
+ v.control.children[0].listeners.click();
+ const panel=v.shell.children[0],prompt=panel.children[2].children[0];
+ assert.match(prompt.value,/готовую подпись|готовый текст публикации/);
+ const options=panel.children[4].children[1];
+ assert.equal(options.children[0].children[1].value,'text');
+ assert.equal(options.children[1].children[1].value,'caption');
+ assert.equal(panel.children[0].children[1].textContent,'Открыть ChatGPT');
+});
+test('ordinary text can target only one chosen editor field, without saving other fields',()=>{
+ const v=env();vm.runInNewContext(uiSource,v.scope);v.control.children[0].listeners.click();
+ const panel=v.shell.children[0];
+ const field=panel.children[4].children[1].children[1].children[1];
+ field.value='brief';field.listeners.change();
+ assert.match(panel.children[2].children[0].value,/готовый краткий бриф/);
+ panel.children[4].children[0].value='Новый бриф с клиентскими тезисами';
+ panel.children[5].listeners.click();
+ assert.equal(panel.children[8].disabled,false);
+ panel.children[8].listeners.click();
+ assert.equal(v.fields.dBrief.value,'Новый бриф с клиентскими тезисами');
+ assert.equal(v.fields.dCaption.value,'Текст');
+ assert.equal(v.scope.state.content[0].brief,'');
+});
+test('expert JSON mode remains available for changing several fields; switching modes invalidates preview',()=>{
+ const v=env();vm.runInNewContext(uiSource,v.scope);v.control.children[0].listeners.click();
+ const panel=v.shell.children[0];
+ const mode=panel.children[4].children[1].children[0].children[1];
+ mode.value='json';mode.listeners.change();
+ assert.match(panel.children[2].children[0].value,/request_id/);
+ panel.children[4].children[0].value=JSON.stringify({
+  schema:'content-center-handoff/1',request_id:'44444444-4444-4444-8444-444444444444',
+  client_id:clientId,content_item_id:itemId,changes:{title:'Новое название',caption:'Новый текст'}
+ });
+ panel.children[5].listeners.click();assert.equal(panel.children[8].disabled,false);
+ mode.value='text';mode.listeners.change();
+ assert.equal(panel.children[8].disabled,true,'changing response mode invalidates verified changes');
+ assert.equal(panel.children[4].children[0].value,'','old JSON response must be cleared');
 });

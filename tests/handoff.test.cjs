@@ -97,3 +97,40 @@ test('brand context is length bounded and ignores arrays or unrelated metadata',
  assert.doesNotMatch(out.prompt,/UNAPPROVED_EXTRA/);
  assert.match(out.prompt,/Турагентство/);
 });
+
+test('plain text prompt contains selected client Brand DNA and no API credentials',()=>{
+ const rich={...client,brand_rules:{audience:'Семьи с детьми',tone:'Тёплый',
+  primary_font:'Evolventa',overlay_rules:'Полупрозрачная подложка',
+  owner_code:'DO_NOT_SEND_THIS',api_key:'DO_NOT_SEND_THIS'}};
+ const {textPrompts}=create().buildRequest({client:rich,item:card,requestId:REQUEST});
+ for(const key of ['caption','brief','title']){
+  assert.match(textPrompts[key],/Семьи с детьми/);
+  assert.match(textPrompts[key],/Полупрозрачная подложка/);
+  assert.doesNotMatch(textPrompts[key],/DO_NOT_SEND_THIS|owner_code|api_key/);
+ }
+ assert.match(textPrompts.caption,/готовую подпись/);
+ assert.match(textPrompts.brief,/краткий бриф/);
+ assert.match(textPrompts.title,/один готовый заголовок/);
+});
+test('ordinary ChatGPT text maps to only one specified same-client field',()=>{
+ const {h,request}=start();
+ for(const field of ['caption','brief','title']){
+  const result=h.parseTextReply('  Нормальный текст для публикации  ',{ticket:request.ticket,baseline:request.baseline,clientId:CLIENT,item:card,field});
+  assert.equal(result.changes[field],'Нормальный текст для публикации');
+  assert.equal(Object.keys(result.changes).length,1);
+  assert.equal(card[field],field==='caption'?'Исходный текст':field==='brief'?'Первый бриф':'Исходное название');
+ }
+});
+test('ordinary text reuses stale draft/status/client ID/nonce safety gates, without new writes',()=>{
+ const {h,request}=start();
+ const options={ticket:request.ticket,baseline:request.baseline,clientId:CLIENT,item:card,field:'caption'};
+ assert.throws(()=>h.parseTextReply('',options));
+ assert.throws(()=>h.parseTextReply('   ',options));
+ assert.throws(()=>h.parseTextReply('x'.repeat(16001),options));
+ assert.throws(()=>h.parseTextReply('Неправильное поле',{...options,field:'status'}));
+ assert.throws(()=>h.parseTextReply('Подмена',{...options,clientId:OTHER}));
+ assert.throws(()=>h.parseTextReply('Устарел',{...options,item:{...card,caption:'Сохранено позднее'}}));
+ assert.throws(()=>h.parseTextReply('В архиве',{...options,item:{...card,archived_at:'2026-10-01'}}));
+ assert.throws(()=>h.parseTextReply('Завершено',{...options,item:{...card,status:'approved'}}));
+ assert.equal(card.caption,'Исходный текст');
+});

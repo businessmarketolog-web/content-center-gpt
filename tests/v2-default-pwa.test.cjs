@@ -27,13 +27,13 @@ test('all V2 features share explicit legacy opt-out, no accidentally mixed conte
 });
 test('new cache includes exact versioned default V2 scripts and manifest, protecting online update',()=>{
  const html=read('index.html'),sw=read('service-worker.js');
- assert.match(sw,/content-center-v22-20261013-v2default1/);
+ assert.match(sw,/content-center-v23-20261013-ai-ease1/);
  for(const asset of [
  'clients-v9.js?v=20261013-v2default1',
  'v2/workspace.js?v=20261013-v2default1',
  'v2/brand-dna-ui.js?v=20261013-v2default1',
  'v2/client-wizard-ui.js?v=20261013-v2default1',
- 'v2/handoff-ui.js?v=20261013-v2default1',
+ 'v2/handoff-ui.js?v=20261013-ai-ease1',
  'v2/content-dedup-ui.js?v=20261013-v2default1',
  'manifest.webmanifest?v=20261013-v2default1'
  ]){

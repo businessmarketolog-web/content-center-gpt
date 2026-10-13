@@ -51,29 +51,68 @@
     const panel=element('section','ccv2-handoff-panel');panel.id='ccv2-handoff';
     panel.setAttribute('aria-label','Передача правок из ChatGPT');
     const head=element('div','ccv2-handoff-heading');
-    const heading=element('h2','', 'Правки через ChatGPT');
+    const heading=element('h2','', 'ИИ-редактор материала');
     const close=element('button','ccv2-close-check','×');close.type='button';close.setAttribute('aria-label','Закрыть передачу правок');
-    close.addEventListener('click',()=>{active=null;panel.remove();});add(head,heading,close);
-    const intro=element('p','ccv2-handoff-help','Работаем только с существующей карточкой «'+String(item.title||'Без названия')+'». Создание нового материала и автоматическая синхронизация здесь не выполняются.');
-    const promptLabel=element('label','ccv2-handoff-label','1. Скопируйте задание в ChatGPT');
-    const prompt=element('textarea','ccv2-handoff-textarea');prompt.readOnly=true;prompt.value=request.prompt;prompt.rows=5;promptLabel.appendChild(prompt);
+    close.addEventListener('click',()=>{active=null;panel.remove();});
+    const chat=element('button','ccv2-check ccv2-chat-open','Открыть ChatGPT');
+    chat.type='button';chat.setAttribute('aria-label','Открыть ChatGPT в новой вкладке');
+    chat.addEventListener('click',()=>{window.open('https://chatgpt.com/','_blank','noopener,noreferrer');});
+    add(head,heading,chat,close);
+    const intro=element('p','ccv2-handoff-help','Клиент: '+String(currentClient()?.name||'')+'. Материал: «'+String(item.title||'Без названия')+'». Текст остаётся привязан к этой карточке; автоматическая генерация пока не подключена.');
+    const promptLabel=element('label','ccv2-handoff-label','1. Скопируйте задание с Бренд-ДНК в ChatGPT');
+    const prompt=element('textarea','ccv2-handoff-textarea');prompt.readOnly=true;prompt.value=request.textPrompts.caption;prompt.rows=5;promptLabel.appendChild(prompt);
     const copy=element('button','ccv2-check','Скопировать задание');copy.type='button';
-    const replyLabel=element('label','ccv2-handoff-label','2. Вставьте ответ ChatGPT в формате JSON');
-    const reply=element('textarea','ccv2-handoff-textarea');reply.placeholder='Ответ в формате JSON, без новых ID и статусов';reply.maxLength=28000;reply.rows=5;replyLabel.appendChild(reply);
+    const replyLabel=element('label','ccv2-handoff-label','2. Вставьте готовый текст от ChatGPT');
+    const reply=element('textarea','ccv2-handoff-textarea');reply.placeholder='Вставьте обычный готовый текст. Формат JSON больше не обязателен.';reply.maxLength=28000;reply.rows=5;replyLabel.appendChild(reply);
+    const choices=element('div','ccv2-handoff-options');
+    const modeWrap=element('span','ccv2-handoff-option');
+    const modeTitle=element('span','','Формат ответа');
+    const mode=element('select','ccv2-handoff-select');mode.id='ccv2-handoff-mode';
+    mode.setAttribute('aria-label','Формат ответа ChatGPT');
+    for(const [value,label] of [['text','Обычный текст'],['json','JSON · несколько полей']]){
+      const option=element('option','',label);option.value=value;mode.appendChild(option);
+    }
+    mode.value='text';add(modeWrap,modeTitle,mode);
+    const fieldWrap=element('span','ccv2-handoff-option');
+    const fieldTitle=element('span','','Куда перенести');
+    const field=element('select','ccv2-handoff-select');field.id='ccv2-handoff-field';
+    field.setAttribute('aria-label','Поле для переноса ответа');
+    for(const [value,label] of [['caption','Текст публикации'],['brief','Бриф'],['title','Заголовок']]){
+      const option=element('option','',label);option.value=value;field.appendChild(option);
+    }
+    field.value='caption';add(fieldWrap,fieldTitle,field);
+    add(choices,modeWrap,fieldWrap);replyLabel.appendChild(choices);
     const check=element('button','ccv2-check','Проверить ответ');check.type='button';
     const status=element('p','ccv2-handoff-message','Внесённые здесь правки ещё не сохранены в Content Center.');status.setAttribute('role','status');
     const diff=element('div','ccv2-handoff-diff');
     const transfer=element('button','ccv2-create','Перенести в редактор');transfer.type='button';transfer.disabled=true;
     add(panel,head,intro,promptLabel,copy,replyLabel,check,status,diff,transfer);
     shell.appendChild(panel);panel.scrollIntoView?.({block:'nearest',behavior:'smooth'});
+    function resetValidation(){
+      transfer.disabled=true;diff.replaceChildren();
+      message(status,'После изменения текста или выбора поля выполните проверку ещё раз.');
+    }
+    function updatePrompt(){
+      const json=mode.value==='json';
+      fieldWrap.hidden=json;
+      reply.placeholder=json?'Вставьте JSON-ответ с идентификаторами из задания':'Вставьте обычный готовый текст, без JSON';
+      prompt.value=json?request.prompt:request.textPrompts[field.value];
+      reply.value='';
+      resetValidation();
+    }
+    mode.addEventListener('change',updatePrompt);
+    field.addEventListener('change',updatePrompt);
     copy.addEventListener('click',async()=>{
-      try{await navigator.clipboard.writeText(request.prompt);message(status,'Задание скопировано. Верните ответ ChatGPT в поле ниже.');}
+      try{await navigator.clipboard.writeText(prompt.value);message(status,'Задание скопировано. Откройте ChatGPT, вставьте его и затем верните ответ в поле ниже.');}
       catch{prompt.focus();prompt.select();message(status,'Скопируйте выделенный текст задания вручную.');}
     });
     const resolve=()=>{
       if(!active||active.request.ticket.request_id!==request.ticket.request_id)throw Error('Задание больше не активно');
       const current=byId(item.id);
-      return CCV2Handoff.parseReply(reply.value,{ticket:request.ticket,baseline:request.baseline,clientId:state.clientId,item:current});
+      const params={ticket:request.ticket,baseline:request.baseline,clientId:state.clientId,item:current};
+      return mode.value==='json'
+        ?CCV2Handoff.parseReply(reply.value,params)
+        :CCV2Handoff.parseTextReply(reply.value,{...params,field:field.value});
     };
     reply.addEventListener('input',()=>{transfer.disabled=true;diff.replaceChildren();message(status,'После изменения ответа выполните проверку ещё раз.');});
     check.addEventListener('click',()=>{
