@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'feat/content-center-v2-safety-*'
+      - 'feat/content-center-v2-brand-dna-*'
       - 'release/v2-candidate-*'
   pull_request:
     branches:

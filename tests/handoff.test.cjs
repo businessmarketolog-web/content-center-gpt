@@ -75,13 +75,16 @@ test('new prompt for same card invalidates older request, preventing accidental 
 test('ChatGPT prompt includes only selected client brand profile and task brief, never unknown secrets',()=>{
  const richClient={...client,business_type:'Турагентство',brand_rules:{
   audience:'Семьи с детьми',goals:'Запросы на подбор тура',tone:'Тёплый и экспертный',
-  primary_font:'Evolventa',accent_font:'Liana',api_secret:'LEAK_ME_NEVER',owner_code:'LEAK_ME_NEVER'
+  primary_font:'Evolventa',accent_font:'Liana',interests:'Выбирать пляжные отели',
+  writing_rules:'Короткие экспертные абзацы',overlay_rules:'Полупрозрачная тёмная подложка',
+  content_pillars:'Обзоры отелей',visual_style:'Без неона',api_secret:'LEAK_ME_NEVER',owner_code:'LEAK_ME_NEVER'
  }};
  const richItem={...card,brief_data:{goal:'Поддержать продажи',key_points:'Пляж и инфраструктура',cta:'Написать менеджеру',token:'LEAK_ME_NEVER'}};
  const handoff=create().buildRequest({client:richClient,item:richItem,requestId:REQUEST});
  assert.match(handoff.prompt,/Семьи с детьми/);
  assert.match(handoff.prompt,/Тёплый и экспертный/);
  assert.match(handoff.prompt,/Evolventa/);
+ assert.match(handoff.prompt,/Полупрозрачная тёмная подложка|Обзоры отелей|Без неона/);
  assert.match(handoff.prompt,/Пляж и инфраструктура/);
  assert.match(handoff.prompt,/Написать менеджеру/);
  assert.doesNotMatch(handoff.prompt,/LEAK_ME_NEVER|owner_code|api_secret/);
