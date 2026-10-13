@@ -56,6 +56,15 @@ test('brand rules are bounds-limited and never include arbitrary metadata or API
  assert.ok(p.length<3500);
  assert.doesNotMatch(p,/SHADOW_DATA|TOP_SECRET/);
 });
+test('V2 Brand DNA navigation is added to header and sidebar and opens selected profile',()=>{
+ assert.match(uiCode,/ccv2BrandNavTop/);
+ assert.match(uiCode,/ccv2BrandNavMenu/);
+ assert.match(uiCode,/previousRenderNav/);
+ assert.match(uiCode,/show\('dashboard'\)/);
+ assert.match(uiCode,/renderDashboard\(\)/);
+ assert.match(uiCode,/panel\.scrollIntoView/);
+ assert.doesNotMatch(uiCode,/location\.reload\(|window\.location\s*=/);
+});
 test('brand dashboard is disabled for old legacy URL',()=>{
  const scope={window:{location:{search:''}},URLSearchParams,document:{querySelector(){throw Error('must not run')}},CCV2BrandDNA:model()};
  assert.doesNotThrow(()=>vm.runInNewContext(uiCode,scope));

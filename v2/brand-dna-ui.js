@@ -6,6 +6,7 @@
     typeof document==='undefined'||typeof CCV2BrandDNA==='undefined'||
     typeof renderDashboard!=='function')return;
  const previousRender=renderDashboard;
+ const previousRenderNav=typeof renderNav==='function'?renderNav:null;
  const mk=(tag,klass,value)=>{
   const el=document.createElement(tag);
   if(klass)el.className=klass;
@@ -58,6 +59,47 @@
   card.append(mk('p','ccv2-brand-note','Шрифты здесь — точные инструкции, но их визуальное применение требует подключённых лицензионных файлов. Профиль не публикуется автоматически.'));
   shell.querySelector('.ccv2-header')?.after(card);
  }
+ function openBrandPanel(){
+  if(!state.session||!state.clientId){
+   if(typeof toast==='function')toast('Сначала войдите и выберите клиента',true);
+   return;
+  }
+  // The header entry is available even when Calendar, Production or another view is open.
+  if(typeof show==='function')show('dashboard');
+  if(typeof renderDashboard==='function')renderDashboard();
+  const panel=document.getElementById('ccv2-brand-dna');
+  if(!panel){
+   if(typeof toast==='function')toast('Профиль не загрузился. Обновите страницу V2.',true);
+   return;
+  }
+  panel.setAttribute('tabindex','-1');
+  try{panel.focus({preventScroll:true});}catch{panel.focus();}
+  panel.scrollIntoView?.({behavior:'smooth',block:'start'});
+ }
+ function ensureBrandNavigation(){
+  const settings=document.getElementById('clientSettingsBtnV9');
+  if(settings&&!document.getElementById('ccv2BrandNavTop')){
+   const entry=mk('button','client-header-btn-v9 ccv2-brand-nav-top','✦ Бренд-ДНК');
+   entry.type='button';entry.id='ccv2BrandNavTop';
+   entry.setAttribute('aria-label','Открыть Бренд-ДНК выбранного клиента');
+   entry.addEventListener('click',openBrandPanel);
+   settings.after(entry);
+  }
+  const menu=document.getElementById('menu');
+  if(menu&&!document.getElementById('ccv2BrandNavMenu')){
+   const entry=mk('button','nav ccv2-brand-nav-menu');
+   entry.id='ccv2BrandNavMenu';entry.type='button';
+   entry.setAttribute('aria-label','Открыть Бренд-ДНК выбранного клиента');
+   entry.append(mk('span','ni','✦'),mk('span','','Бренд-ДНК'));
+   entry.addEventListener('click',openBrandPanel);
+   const first=menu.querySelector('[data-v="dashboard"]');
+   if(first)first.after(entry);else menu.append(entry);
+  }
+ }
  renderDashboard=function(){previousRender();renderPanel();};
+ if(previousRenderNav){
+  renderNav=function(){previousRenderNav();ensureBrandNavigation();};
+ }
+ ensureBrandNavigation();
  if(state.session&&state.clientId)renderPanel();
 })();

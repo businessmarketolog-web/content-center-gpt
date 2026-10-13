@@ -13,3 +13,8 @@
 .ccv2-brand-note{margin:14px 0 0}
 @media(max-width:980px){.ccv2-brand-highlights{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.ccv2-brand-dna{padding:13px}.ccv2-brand-highlights{grid-template-columns:1fr}.ccv2-brand-actions,.ccv2-brand-actions button{width:100%}}
+
+.ccv2-brand-nav-top{border-color:var(--cyan);color:var(--cyan);font-weight:800}
+.ccv2-brand-nav-top:focus-visible,.ccv2-brand-nav-menu:focus-visible,.ccv2-brand-dna:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.ccv2-brand-nav-menu .ni{color:var(--cyan)}
+@media(max-width:570px){.ccv2-brand-nav-top{flex:1 1 130px;min-height:44px}}
