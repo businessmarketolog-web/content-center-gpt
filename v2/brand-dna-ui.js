@@ -2,7 +2,7 @@
 (function(){
  'use strict';
  if(typeof window==='undefined'||!window.location||
-    new URLSearchParams(window.location.search).get('workspace')!=='v2'||
+    ['v1','legacy'].includes(new URLSearchParams(window.location.search).get('workspace'))||
     typeof document==='undefined'||typeof CCV2BrandDNA==='undefined'||
     typeof renderDashboard!=='function')return;
  const previousRender=renderDashboard;
