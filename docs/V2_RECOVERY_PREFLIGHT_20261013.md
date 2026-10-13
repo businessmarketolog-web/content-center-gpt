@@ -26,3 +26,6 @@
 
 ## Staging provisioned on 13 October 2026
 A separate Free Supabase project `content-center-v2-recovery-staging-20261013` (`ozmajlqkjvgfsjmrcimg`) was created and inspected as empty (`public` has no tables); production `kywxggukoqalzhuykhmx` still had 34 `public` tables. Region `eu-central-1`, same organization. Project creation is NOT a database restore, and no client rows or secrets were transferred. The owner computer Den reconnected but has no Postgres/Supabase CLI or Docker installed; the real dump must still be created privately before restoring to staging. Never treat `content_backups` records as a full physical backup.
+
+## Backup availability confirmed
+Connected Supabase backup listing returned `backups: []`, `pitr_enabled: false` for production. No automatic backup can be restored today. An encrypted private, complete logical dump must be produced and restored into `ozmajlqkjvgfsjmrcimg` before production cutover. Den has no compatible PostgreSQL/Supabase tooling installed; no database password was accessed. Read-only schema inventory includes 34 public + 32 auth/private/control tables, plus 8 Supabase storage tables. This is schema metadata, not a snapshot of their contents.
