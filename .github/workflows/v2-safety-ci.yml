@@ -6,6 +6,7 @@ on:
       - 'feat/content-center-v2-safety-*'
       - 'feat/content-center-v2-brand-dna-*'
       - 'feat/content-center-v2-default-*'
+      - 'feat/content-center-v2-ai-handoff-*'
       - 'fix/content-center-v2-brand-nav-*'
       - 'release/v2-candidate-*'
   pull_request:

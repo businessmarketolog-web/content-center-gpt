@@ -144,12 +144,24 @@ async function main(){
    const handoffId=await handoffButton.getAttribute('data-ccv2-handoff');
    const handoffClient=await page.locator('#client').inputValue();
    await handoffButton.click();
+   assert.equal(await page.locator('#ccv2-handoff-mode').inputValue(),'text','simple text mode should be the default');
+   assert.equal(await page.locator('#ccv2-handoff-field').inputValue(),'caption');
+   const plainPrompt=await page.locator('#ccv2-handoff textarea[readonly]').inputValue();
+   assert.match(plainPrompt,/готовую подпись/);
+   assert.match(plainPrompt,/Исходный клиент — деловые поездки/,'current client brand context required');
+   await page.locator('#ccv2-handoff textarea:not([readonly])').fill('Безопасно улучшенный текст');
+   await page.locator('#ccv2-handoff button',{hasText:'Проверить ответ'}).click();
+   assert.equal(await page.locator('#ccv2-handoff button',{hasText:'Перенести в редактор'}).isEnabled(),true);
+   assert.match(await page.locator('#ccv2-handoff .ccv2-handoff-diff').innerText(),/Безопасно улучшенный текст/);
+   // The original strict JSON multi-field contract stays available on request.
+   await page.locator('#ccv2-handoff-mode').selectOption('json');
+   assert.equal(await page.locator('#ccv2-handoff button',{hasText:'Перенести в редактор'}).isDisabled(),true);
    const handoffPrompt=await page.locator('#ccv2-handoff textarea[readonly]').inputValue();
    const requestId=handoffPrompt.match(/"request_id":"([0-9a-f-]+)"/i)?.[1];
-   assert.ok(requestId,'handoff request ID must be present');
+   assert.ok(requestId,'JSON handoff request ID must be present');
    await page.locator('#ccv2-handoff textarea:not([readonly])').fill(JSON.stringify({
     schema:'content-center-handoff/1',request_id:requestId,client_id:handoffClient,
-    content_item_id:handoffId,changes:{caption:'Безопасно улучшенный текст'}
+    content_item_id:handoffId,changes:{caption:'Безопасно улучшенный JSON текст'}
    }));
    await page.locator('#ccv2-handoff button',{hasText:'Проверить ответ'}).click();
    assert.equal(await page.locator('#ccv2-handoff button',{hasText:'Перенести в редактор'}).isEnabled(),true);
