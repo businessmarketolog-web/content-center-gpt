@@ -58,7 +58,11 @@
     chat.type='button';chat.setAttribute('aria-label','Открыть ChatGPT в новой вкладке');
     chat.addEventListener('click',()=>{window.open('https://chatgpt.com/','_blank','noopener,noreferrer');});
     add(head,heading,chat,close);
-    const intro=element('p','ccv2-handoff-help','Клиент: '+String(currentClient()?.name||'')+'. Материал: «'+String(item.title||'Без названия')+'». Текст остаётся привязан к этой карточке; автоматическая генерация пока не подключена.');
+    const generate=element('button','ccv2-create ccv2-generate-button','✦ Создать с ИИ');
+    generate.type='button';generate.id='ccv2GenerateButton';
+    generate.setAttribute('aria-label','Подготовить текст автоматически для выбранного материала и клиента');
+    head.appendChild(generate);
+    const intro=element('p','ccv2-handoff-help','Клиент: '+String(currentClient()?.name||'')+'. Материал: «'+String(item.title||'Без названия')+'». ИИ берёт Бренд-ДНК этого клиента с сервера, предлагает черновик, а сохранение всегда выполняете вы. Без серверного API-ключа доступен ручной режим.');
     const promptLabel=element('label','ccv2-handoff-label','1. Скопируйте задание с Бренд-ДНК в ChatGPT');
     const prompt=element('textarea','ccv2-handoff-textarea');prompt.readOnly=true;prompt.value=request.textPrompts.caption;prompt.rows=5;promptLabel.appendChild(prompt);
     const copy=element('button','ccv2-check','Скопировать задание');copy.type='button';
@@ -128,6 +132,69 @@
         }
         transfer.disabled=false;message(status,'Проверьте изменения. Перенос только заполнит поля редактора — сохранение выполняется отдельно.');
       }catch(error){transfer.disabled=true;diff.replaceChildren();message(status,error.message||'Не удалось проверить ответ',true);}
+    });
+    generate.addEventListener('click',async()=>{
+      if(generate.disabled)return;
+      if(!state.session?.access_token){
+        message(status,'Сессия истекла. Войдите в Content Center ещё раз.',true);return;
+      }
+      if(mode.value!=='text'){
+        message(status,'Для автоматической генерации переключите формат ответа на «Обычный текст».',true);return;
+      }
+      if(reply.value.trim()){
+        message(status,'В поле уже есть текст. Скопируйте его и очистите поле перед новой генерацией, чтобы не потерять правки.',true);return;
+      }
+      const current=byId(item.id);
+      if(!current||state.clientId!==request.ticket.client_id||
+         !active||active.request.ticket.request_id!==request.ticket.request_id||
+         CCV2Handoff.snapshot(current)!==request.baseline){
+        message(status,'Карточка изменилась. Откройте ИИ-редактор заново.',true);return;
+      }
+      const target=field.value;
+      generate.disabled=true;generate.textContent='Генерация…';
+      message(status,'Проверяем подключение ИИ, права клиента и дневной лимит. Материал не изменяется.');
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),26000);
+      try{
+        const res=await fetch(SUPABASE_URL+'/functions/v1/generate-content-draft',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,
+            'Authorization':'Bearer '+state.session.access_token},
+          signal:controller.signal,
+          body:JSON.stringify({
+            client_id:request.ticket.client_id,content_item_id:request.ticket.content_item_id,
+            request_id:request.ticket.request_id,field:target,baseline:request.baseline
+          })
+        });
+        let data=null;
+        try{data=await res.json();}catch{}
+        if(!res.ok||!data?.ok)throw Error(data?.message||
+          'Генерация сейчас недоступна. Используйте кнопку «Скопировать задание».');
+        if(!active||active.request.ticket.request_id!==request.ticket.request_id||
+           state.clientId!==request.ticket.client_id||field.value!==target||
+           mode.value!=='text'||reply.value.trim()||
+           data.client_id!==request.ticket.client_id||
+           data.content_item_id!==request.ticket.content_item_id||
+           data.request_id!==request.ticket.request_id||data.field!==target||
+           data.baseline!==request.baseline||
+           CCV2Handoff.snapshot(byId(item.id))!==request.baseline)
+          throw Error('Карточка или режим изменились во время генерации. Текст не перенесён.');
+        CCV2Handoff.parseTextReply(data.text,{
+          ticket:request.ticket,baseline:request.baseline,
+          clientId:state.clientId,item:byId(item.id),field:target
+        });
+        reply.value=data.text;
+        reply.dispatchEvent(new Event('input',{bubbles:true}));
+        check.click();
+        if(!transfer.disabled)message(status,'Черновик готов. Сравните с исходным текстом, проверьте факты и нажмите «Перенести в редактор». Сохранение отдельно.');
+      }catch(error){
+        message(status,error?.name==='AbortError'?
+          'Время ожидания ИИ истекло. Проверьте подключение и повторите позже.':
+          error.message||'Не удалось создать текст. Используйте ручной режим.',true);
+      }finally{
+        clearTimeout(timeout);
+        generate.disabled=false;generate.textContent='✦ Создать с ИИ';
+      }
     });
     transfer.addEventListener('click',()=>{
       try{

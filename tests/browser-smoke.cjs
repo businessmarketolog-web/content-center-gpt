@@ -88,6 +88,20 @@ async function main(){
     if(requested.startsWith('http://127.0.0.1:'))return route.continue();
     return route.abort('blockedbyclient');
    });
+   let aiMode='disabled', aiRequests=0;
+   await page.route('https://kywxggukoqalzhuykhmx.supabase.co/functions/v1/generate-content-draft',async route=>{
+     aiRequests++;
+     const input=route.request().postDataJSON();
+     if(aiMode==='disabled')return route.fulfill({
+       status:503,contentType:'application/json',
+       body:JSON.stringify({ok:false,code:'not_configured',message:'Генерация отключена: Cloudflare Workers Free пока не подключён.'})
+     });
+     return route.fulfill({status:200,contentType:'application/json',
+       body:JSON.stringify({ok:true,client_id:input.client_id,content_item_id:input.content_item_id,
+         request_id:input.request_id,field:input.field,baseline:input.baseline,
+         text:'Проверенный тестовый ответ от бесплатного ИИ',requires_review:true})
+     });
+   });
    // Explicit emergency fallback stays legacy. Do not risk current owner's installed PWA data.
    await page.goto(url.replace('?workspace=v2','?workspace=v1'),{waitUntil:'load'});
    await page.waitForFunction(()=>typeof state!=='undefined'&&state.clients?.length>0);
@@ -145,6 +159,23 @@ async function main(){
    const handoffClient=await page.locator('#client').inputValue();
    await handoffButton.click();
    assert.equal(await page.locator('#ccv2-handoff-mode').inputValue(),'text','simple text mode should be the default');
+   assert.equal(await page.locator('#ccv2GenerateButton').count(),1,'one free AI generation button in existing editor');
+   await page.locator('#ccv2GenerateButton').click();
+   await page.waitForFunction(()=>document.querySelector('#ccv2-handoff .ccv2-handoff-message')?.textContent?.includes('Cloudflare Workers Free пока не подключён'));
+   assert.equal(aiRequests,1,'server readiness checked exactly once');
+   assert.equal(await page.locator('#ccv2-handoff textarea:not([readonly])').inputValue(),'','disabled AI must leave draft empty');
+   assert.equal(await page.locator('#ccv2-handoff button',{hasText:'Перенести в редактор'}).isDisabled(),true);
+   assert.equal(await page.evaluate(()=>window.__testStore.writes.length),0,'disabled provider never edits material');
+   aiMode='success';
+   await page.locator('#ccv2GenerateButton').click();
+   await page.waitForFunction(()=>document.querySelector('#ccv2-handoff textarea:not([readonly])')?.value==='Проверенный тестовый ответ от бесплатного ИИ');
+   assert.equal(aiRequests,2);
+   assert.match(await page.locator('#ccv2-handoff .ccv2-handoff-diff').innerText(),/Проверенный тестовый ответ от бесплатного ИИ/);
+   assert.equal(await page.locator('#ccv2-handoff button',{hasText:'Перенести в редактор'}).isEnabled(),true);
+   assert.equal(await page.evaluate(()=>window.__testStore.writes.length),0,'successful mock AI result requires separate user transfer and save');
+   // Switching back to manual editing remains possible without opening another content item.
+   await page.locator('#ccv2-handoff textarea:not([readonly])').fill('');
+   assert.equal(await page.locator('#ccv2-handoff button',{hasText:'Перенести в редактор'}).isDisabled(),true);
    assert.equal(await page.locator('#ccv2-handoff-field').inputValue(),'caption');
    const plainPrompt=await page.locator('#ccv2-handoff textarea[readonly]').inputValue();
    assert.match(plainPrompt,/готовую подпись/);
