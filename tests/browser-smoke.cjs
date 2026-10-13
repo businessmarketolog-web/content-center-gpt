@@ -103,10 +103,24 @@ async function main(){
    assert.equal(legacy.clientWizard,false,'Bare URL must not replace existing client form');
    assert.equal(legacy.unexpectedWrites,0,'No automatic writes on legacy boot');
    assert.equal(legacy.unexpectedRpcs,0,'No automatic RPCs on legacy boot');
+   assert.equal(await page.locator('#ccv2BrandNavTop').count(),0,'Legacy URL must not show V2-only Brand DNA controls');
+   assert.equal(await page.locator('#ccv2BrandNavMenu').count(),0,'Legacy sidebar must remain untouched');
    await page.goto(url,{waitUntil:'load'});
    await page.locator('#dashboard .ccv2-shell').waitFor({timeout:15000});
    await page.locator('#ccv2-brand-dna').waitFor();
    assert.match(await page.locator('#ccv2-brand-dna').innerText(),/Только Первый Бренд/);
+   assert.equal(await page.locator('#ccv2BrandNavTop').count(),1,'One top Brand DNA button required');
+   assert.equal(await page.locator('#ccv2BrandNavMenu').count(),1,'One sidebar Brand DNA item required');
+   await page.evaluate(()=>show('calendar'));
+   await page.locator('#ccv2BrandNavTop').click();
+   assert.equal(await page.locator('#dashboard').isVisible(),true);
+   assert.equal(await page.evaluate(()=>document.activeElement?.id),'ccv2-brand-dna','Top button must focus actual Brand DNA panel');
+   await page.evaluate(()=>show('production'));
+   await page.locator('#ccv2BrandNavMenu').evaluate(button=>button.click());
+   assert.equal(await page.locator('#dashboard').isVisible(),true);
+   assert.equal(await page.evaluate(()=>document.activeElement?.id),'ccv2-brand-dna','Sidebar button must focus panel');
+   assert.equal(await page.locator('#ccv2BrandNavTop').count(),1,'No duplicate top button after view switching');
+   assert.equal(await page.locator('#ccv2BrandNavMenu').count(),1,'No duplicate sidebar menu entry');
    const context1=await page.evaluate(()=>CCV2BrandDNA.prompt(currentClient(),state.clientId));
    assert.match(context1,/Исходный клиент — деловые поездки/);
    // Exercise the real V2 drawer: a locally edited deadline must survive GPT handoff.

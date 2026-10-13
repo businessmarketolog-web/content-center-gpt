@@ -5,6 +5,7 @@ on:
     branches:
       - 'feat/content-center-v2-safety-*'
       - 'feat/content-center-v2-brand-dna-*'
+      - 'fix/content-center-v2-brand-nav-*'
       - 'release/v2-candidate-*'
   pull_request:
     branches:
