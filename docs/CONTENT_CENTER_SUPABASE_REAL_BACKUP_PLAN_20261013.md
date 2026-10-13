@@ -7,7 +7,9 @@
 - Installed extensions include **pg_cron** and **pg_net**. The system also contains active notification/owner/publishing functions. Accidentally cloning active jobs can send duplicate messages or make external calls.
 - Database backups provided automatically by Supabase are not available on Free. Entries in `content_backups` represent application snapshots and do not cover the full PostgreSQL database.
 - Supabase project-creation cost quoted by the connector: **$0/month** for the current organization. Branch cost: **$0.01344/hour** and ordinary branches do **not** automatically copy production row data. Before creating anything the owner must explicitly confirm the cost and destination.
-- The configured remote PC “Den” was offline at inspection, so no authorized private backup-export endpoint was accessible. Do not invent a database password or copy it to GitHub.
+- A dedicated **Free** staging project was subsequently created in the SAME organization/region for recovery testing: `content-center-v2-recovery-staging-20261013`, project ref **`ozmajlqkjvgfsjmrcimg`**, ACTIVE_HEALTHY. Read-only verification showed **0 public tables** there immediately after creation. This is a separate project, not a clone, and it contains **none** of the production client data. Creation cost confirmed by Supabase: $0/month (Free).
+- Production is **`kywxggukoqalzhuykhmx`** and must never be a restore target. Source had 34 public tables on the same verification pass. Never transpose the two project references.
+- The remote PC “Den” is now reachable, but PostgreSQL command-line tools, Supabase CLI, Docker and WSL distributions were **not installed** at inspection. No authorized password or real SQL dump was fetched. Do not invent a database password or copy it to GitHub. Obtain DB credentials privately on that device before conducting an actual export, then install/verify compatible official tools with the owner's permission.
 
 ## 1. Create the real backup privately (once authorized)
 Use the Supabase-supported three-part *logical backup* from https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore :

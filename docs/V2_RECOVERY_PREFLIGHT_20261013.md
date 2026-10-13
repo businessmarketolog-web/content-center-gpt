@@ -23,3 +23,6 @@
 - No release or schema migration applied; no verified ChatGPT ↔ app server-side synchronization.
 
 **Release decision: BLOCKED** until genuine isolated Supabase restoration, authenticated device checks and explicit cutover approval are completed.
+
+## Staging provisioned on 13 October 2026
+A separate Free Supabase project `content-center-v2-recovery-staging-20261013` (`ozmajlqkjvgfsjmrcimg`) was created and inspected as empty (`public` has no tables); production `kywxggukoqalzhuykhmx` still had 34 `public` tables. Region `eu-central-1`, same organization. Project creation is NOT a database restore, and no client rows or secrets were transferred. The owner computer Den reconnected but has no Postgres/Supabase CLI or Docker installed; the real dump must still be created privately before restoring to staging. Never treat `content_backups` records as a full physical backup.
