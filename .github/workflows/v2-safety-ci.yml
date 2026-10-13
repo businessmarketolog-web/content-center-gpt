@@ -52,6 +52,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test actual V2 HTML against mocked Supabase (no production API requests)
         run: node tests/browser-smoke.cjs
+      - name: Test real service worker cache update preserves local state
+        run: node tests/pwa-cache-smoke.cjs
   webkit-smoke:
     name: Safari WebKit isolated desktop and mobile smoke
     runs-on: ubuntu-latest
