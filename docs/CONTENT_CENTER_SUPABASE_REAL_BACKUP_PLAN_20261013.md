@@ -50,3 +50,12 @@ References:
 
 ## Release gate
 The work is **NOT READY TO MERGE** into production until a real full logical dump and separate successful restoration are demonstrated, plus owner-authenticated iPhone checks and PWA cache/draft tests. Existing production `main` and backup branches remain untouched.
+
+
+## Verified on 13 October 2026 — portable tools and real SQL recovery smoke
+- Official **EnterpriseDB PostgreSQL 17.11-3 Windows x64 binary ZIP** was downloaded onto the user-authorized Den PC under `%LOCALAPPDATA%\\ContentCenterTools`. SHA-256 matched the hash published by EnterpriseDB for the exact archive: `4b8db0930c38f6ef845db919551dedda3b6b845aeb0927b3d79a6e8e9e4537cf`.
+- Standalone `pg_dump.exe 17.11` and `psql.exe 17.11` now run from `%LOCALAPPDATA%\\ContentCenterTools\\pg17\\pgsql\\bin`. The EDB winget installer failed, so portable utilities were used instead; **no server installation/service** was required.
+- Checked only the existence of common `pgpass.conf`, `.pgpass` and DB environment variables; none were found. No secrets or client records were accessed. **Real Supabase dump and restore not yet completed.**
+- Added `tests/postgres-recovery-smoke.sh` and two synthetic SQL fixtures run by GitHub Actions inside disposable `postgres:17` containers: **genuine pg_dump→pg_restore** into a second empty DB, SHA-256 verification, matching table counts, three RLS policies, index, FK rejection, and cross-client row isolation.
+- CI run [38367087042](https://github.com/businessmarketolog-web/content-center-gpt/actions/runs/38367087042) was successful (as was [38367095354](https://github.com/businessmarketolog-web/content-center-gpt/actions/runs/38367095354)).
+- This establishes toolchain integrity and restore mechanics using fake data, **not** a full Supabase backup/restore. Future source export must be initiated privately on Den using valid source database credentials. Never dump into or restore over production and never expose passwords/dumps to GitHub.
