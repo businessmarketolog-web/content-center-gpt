@@ -144,7 +144,11 @@ async function main(){
    page.once('dialog',dialog=>dialog.dismiss());
    await page.locator('#saveAdd').click();
    assert.equal(await page.evaluate(title=>window.__testStore.content_items.filter(x=>x.title===title).length,materialTitle),1,'declining duplicate must not create a second record');
-   await page.evaluate(()=>closeAdd(true));
+   // Owner may deliberately approve a recurring item; it must stay with the same client.
+   page.once('dialog',dialog=>dialog.accept());
+   await page.locator('#saveAdd').click();
+   await page.waitForFunction(title=>window.__testStore.content_items.filter(x=>x.title===title).length===2,materialTitle);
+   assert.equal(await page.evaluate(title=>window.__testStore.content_items.filter(x=>x.title===title).every(x=>x.client_id===state.clientId),materialTitle),true,'intentional duplicate must stay client-scoped');
    await page.locator('#client').selectOption('11111111-1111-4111-8111-111111111111');
    await page.waitForFunction(id=>state.clientId===id,'11111111-1111-4111-8111-111111111111');
    assert.equal(await page.evaluate(title=>state.content.some(x=>x.title===title),materialTitle),false,'foreign client must not see newly created material');

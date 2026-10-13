@@ -24,3 +24,7 @@
 - Draft review: https://github.com/businessmarketolog-web/content-center-gpt/pull/2 . It targets the V2 foundation branch, not production main.
 
 No production table was written to, no owner login code was changed and no real social-media publication was attempted during these tests.
+
+## Update after Safari duplicate warning confirmation
+
+User confirmed that the warning appears on a real iPhone Safari after the bare preview URL was corrected to enter V2 (demo commit `86a5b7902561fa6d86c6cfb1dde93c3afe33d527`). This confirms only the warning UI; the browser test suite separately checks both the cancelled and the deliberately confirmed duplicate paths. The 5-case synthetic recovery validation in `tests/mock-recovery-dryrun.test.cjs` is **not** a full Supabase restore. Real isolated recovery remains a blocking release gate; see `docs/V2_RECOVERY_PREFLIGHT_20261013.md`.
