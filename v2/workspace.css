@@ -78,6 +78,10 @@ html.cc-v2 #dashboard{max-width:1540px;margin:0 auto}
 .ccv2-handoff-change strong{font-size:13px;color:#dcf7f8}
 .ccv2-handoff-change p{font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0}
 .ccv2-handoff-before{color:#a8b7be}.ccv2-handoff-after{color:#d2ecdc}
+/* Generation button reuses canonical draft and disabled-until-configured Edge function. */
+.ccv2-generate-button{min-height:44px;order:2}
+.ccv2-handoff-heading .ccv2-close-check{order:3}
+@media(max-width:650px){.ccv2-handoff-heading .ccv2-generate-button{width:100%;order:4}}
 /* Mobile-first human-readable AI handoff: one client, one existing content card. */
 .ccv2-handoff-heading{flex-wrap:wrap}
 .ccv2-handoff-heading .ccv2-chat-open{min-height:44px;margin-left:auto}
