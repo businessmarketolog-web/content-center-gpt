@@ -28,7 +28,7 @@
   form.insertBefore(page,footer);return page;
  });
  const summary=pages[5];
- const back=document.createElement('button');back.type='button';back.className='ghost';back.textContent='← Назад';
+ const back=document.createElement('button');back.type='button';back.id='ccv2WizardBack';back.className='ghost';back.textContent='← Назад';
  const next=document.createElement('button');next.type='button';next.className='primary';next.textContent='Продолжить →';
  footer.insertBefore(back,save);footer.insertBefore(next,save);
  let current=0;

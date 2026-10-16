@@ -44,5 +44,5 @@ test('V2 assets are declared and refreshed in HTML and PWA cache',()=>{
   assert.match(html,new RegExp(name.replace('.','\\.')));
   assert.match(worker,new RegExp(name.replace('.','\\.')));
  }
- assert.match(worker,/content-center-v24-20261013-free-ai1/);
+ assert.match(worker,/content-center-v25-20261016-iosnav1/);
 });
