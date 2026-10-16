@@ -42,6 +42,8 @@ test('new iOS back controls and sticky headers remain PWA cached',()=>{
  assert.match(css,/\.modal\.on \.dialog-head/);
  assert.match(css,/min-height:48px/);
  assert.match(css,/position:sticky/);
+ assert.match(css,/#toast\.toast,#toast\.toast\.on/);
+ assert.match(css,/pointer-events:none!important/);
  assert.match(src,/ccv2WizardBack/);
  assert.match(fs.readFileSync(path.join(root,'v2/client-wizard-ui.js'),'utf8'),/back\.id='ccv2WizardBack'/);
 });

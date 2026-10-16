@@ -3,6 +3,18 @@
    No desktop changes; maintain iPhone standalone PWA safe areas. */
 .ccv2-mobile-section-back{display:none}
 @media (max-width:700px){
+  /* Existing fixed success/error toast lived at top:18px with z-index:80.
+     It blocked the new and old iPhone back controls even when their geometry
+     was correct. Relocate it above bottom nav; notifications aren't buttons. */
+  #toast.toast,#toast.toast.on{
+    top:auto!important;
+    bottom:calc(128px + env(safe-area-inset-bottom))!important;
+    left:12px!important;
+    right:12px!important;
+    width:auto;
+    max-width:none!important;
+    pointer-events:none!important;
+  }
   .ccv2-mobile-section-back:not([hidden]){
     display:inline-flex;
     width:max-content;
