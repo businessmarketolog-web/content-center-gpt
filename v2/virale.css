@@ -1,0 +1,40 @@
+#virale{max-width:1200px;margin:0 auto}
+#virale .virale-intro{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:20px;padding:22px;border:1px solid rgba(99,125,149,.26);border-radius:18px;background:linear-gradient(125deg,rgba(26,104,124,.22),rgba(9,30,42,.3))}
+#virale .virale-eyebrow{letter-spacing:.12em;text-transform:uppercase;font-size:11px;opacity:.72}
+#virale h2{font-size:26px;margin:8px 0}
+#virale h2 span{font-size:12px;opacity:.7}
+#virale .virale-intro p{max-width:650px;line-height:1.5;opacity:.85}
+#virale .virale-quick{font-size:12px;max-width:210px;line-height:1.8;opacity:.75}
+#virale .virale-grid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(220px,1fr);gap:16px}
+#virale .virale-panel,#virale .virale-idea{background:rgba(25,48,60,.42);border:1px solid rgba(147,170,184,.22);border-radius:16px;padding:20px}
+#virale .virale-panel h3,#virale .virale-section-title{font-size:18px;margin:0 0 12px}
+#virale .virale-muted{opacity:.72;font-size:13px;line-height:1.5}
+#virale .virale-dna{font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+#virale form>label,#virale .virale-number-grid label{display:block;font-size:13px;font-weight:600;margin:14px 0}
+#virale label>.input,#virale input.input,#virale textarea.input{display:block;width:100%;box-sizing:border-box;margin-top:7px}
+#virale textarea{resize:vertical;min-height:76px}
+#virale .virale-details{margin:18px 0;border-top:1px solid rgba(147,170,184,.22);padding-top:16px}
+#virale summary{cursor:pointer;font-size:14px;font-weight:600}
+#virale .virale-number-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+#virale .virale-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:16px 0 6px}
+#virale button{cursor:pointer}
+#virale button:disabled{opacity:.45;cursor:not-allowed}
+#virale .virale-message{font-size:13px;line-height:1.5;margin-top:14px;min-height:20px}
+#virale .virale-error{color:#ffb2a5}
+#virale .virale-results{margin:22px 0 40px}
+#virale .virale-results h2{font-size:22px}
+#virale .virale-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#virale .virale-metric{padding:14px;border:1px solid rgba(147,170,184,.24);border-radius:12px}
+#virale .virale-metric small{display:block;opacity:.72;font-size:11px;line-height:1.4}
+#virale .virale-metric strong{font-size:24px;display:block;margin-top:4px}
+#virale .virale-notes{padding-left:20px;line-height:1.6;font-size:13px}
+#virale .virale-caveat{font-size:12px;opacity:.72;line-height:1.45}
+#virale .virale-ideas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#virale .virale-idea{padding:16px;min-width:0}
+#virale .virale-idea h3{font-size:16px;margin:8px 0}
+#virale .virale-idea small{opacity:.68;line-height:1.4}
+#virale .virale-hook{font-size:13px;font-weight:650;line-height:1.5}
+#virale .virale-script{font:inherit;font-size:12px;line-height:1.65;white-space:pre-wrap;word-break:break-word;opacity:.9}
+#virale .virale-idea button{font-size:12px}
+@media(max-width:950px){#virale .virale-ideas{grid-template-columns:1fr}}
+@media(max-width:680px){#virale .virale-grid{grid-template-columns:1fr}#virale .virale-intro{display:block;padding:16px}#virale .virale-quick{max-width:none;margin-top:14px}#virale .virale-panel{padding:16px}#virale .virale-metrics{grid-template-columns:1fr}#virale .virale-metric{display:flex;align-items:center;justify-content:space-between;gap:14px}#virale .virale-metric strong{font-size:19px}}
