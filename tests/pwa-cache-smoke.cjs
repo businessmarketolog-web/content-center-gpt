@@ -10,8 +10,8 @@ const assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
-const current='content-center-v24-20261013-free-ai1';
-const next='content-center-v25-pwa-synthetic-qa';
+const current='content-center-v25-20261016-virale1';
+const next='content-center-v26-pwa-synthetic-qa';
 assert.ok(source.includes(current),'Unexpected service worker version; update PWA smoke fixture');
 let sw=source;
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
@@ -56,10 +56,10 @@ const app=http.createServer((req,res)=>{
   assert.ok(status.keys.includes('some-other-app-assets'),'Must preserve unrelated app cache after SW install');
   assert.ok(status.keys.includes('content-center-user-drafts'),'Must preserve non-versioned user cache after SW install');
   const urls=await page.evaluate(async()=>{
-   const c=await caches.open('content-center-v24-20261013-free-ai1');
+   const c=await caches.open('content-center-v25-20261016-virale1');
    const all=await c.keys();return all.map(k=>new URL(k.url).pathname);
   });
-  for(const required of ['/index.html','/v2/workspace.js','/v2/content-dedup-ui.js','/clients-v9.js','/v2/brand-dna-ui.js','/v2/brand-dna-model.js']){
+  for(const required of ['/index.html','/v2/workspace.js','/v2/content-dedup-ui.js','/clients-v9.js','/v2/brand-dna-ui.js','/v2/brand-dna-model.js','/v2/virale-core.js','/v2/virale-ui.js','/v2/virale.css']){
    assert.ok(urls.includes(required),'Missing offline PWA asset '+required);
   }
   // New code pushed to server: automatic activation should remove old
@@ -71,7 +71,7 @@ const app=http.createServer((req,res)=>{
   });
   await page.waitForFunction(async()=>{
    const names=await caches.keys();
-   return names.includes('content-center-v25-pwa-synthetic-qa')&&!names.includes('content-center-v24-20261013-free-ai1');
+   return names.includes('content-center-v26-pwa-synthetic-qa')&&!names.includes('content-center-v25-20261016-virale1');
   },null,{timeout:30000});
   await page.reload();
   const check=await page.evaluate(()=>({
