@@ -90,7 +90,12 @@ async function assertTouchableSafeBack(page,selector,label){
   const rect=el.getBoundingClientRect();
   const topInset=Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-top-test'))||0;
   const hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);
-  return {top:rect.top,height:rect.height,hit:el===hit||el.contains(hit),inset:topInset,visible:getComputedStyle(el).display!=='none'};
+  return {top:rect.top,left:rect.left,width:rect.width,height:rect.height,
+    hit:el===hit||el.contains(hit),inset:topInset,visible:getComputedStyle(el).display!=='none',
+    topHit:hit?.tagName+'#'+(hit?.id||'')+'.'+(hit?.className||''),
+    hitStack:document.elementsFromPoint(rect.left+rect.width/2,rect.top+rect.height/2).slice(0,5).map(x=>x.tagName+'#'+(x.id||'')+'.'+(x.className||'')),
+    pointerEvents:getComputedStyle(el).pointerEvents,
+    zIndex:getComputedStyle(el).zIndex};
  });
  assert.ok(data.visible&&data.hit&&data.height>=44&&data.top>=data.inset,
    label+' must be visible, clickable and below iPhone safe area: '+JSON.stringify(data));
