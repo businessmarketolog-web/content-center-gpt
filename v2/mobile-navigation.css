@@ -1,0 +1,201 @@
+/* iPhone status-bar and Dynamic Island safe back controls.
+   Loaded last so older modal/drawer overrides cannot cover these buttons.
+   No desktop changes; maintain iPhone standalone PWA safe areas. */
+.ccv2-mobile-section-back{display:none}
+@media (max-width:700px){
+  /* Existing fixed success/error toast lived at top:18px with z-index:80.
+     It blocked the new and old iPhone back controls even when their geometry
+     was correct. Relocate it above bottom nav; notifications aren't buttons. */
+  #toast.toast,#toast.toast.on{
+    top:auto!important;
+    bottom:calc(128px + env(safe-area-inset-bottom))!important;
+    left:12px!important;
+    right:12px!important;
+    width:auto;
+    max-width:none!important;
+    pointer-events:none!important;
+  }
+  .ccv2-mobile-section-back:not([hidden]){
+    display:inline-flex;
+    width:max-content;
+    min-height:46px;
+    align-items:center;
+    justify-content:center;
+    border:1px solid rgba(103,231,242,.27);
+    border-radius:12px;
+    background:rgba(6,37,44,.96);
+    color:#e5fbfc;
+    font:700 15px/1.25 Inter,"Segoe UI",sans-serif;
+    padding:9px 14px;
+    margin-bottom:9px;
+    touch-action:manipulation;
+    cursor:pointer;
+  }
+  .ccv2-mobile-section-back:focus-visible,
+  .mobile-back:focus-visible{
+    outline:3px solid #9deef3;
+    outline-offset:2px;
+  }
+  /* Clear the Safari toolbar / Dynamic Island: the clickable part of
+     the button always starts below safe-area-inset-top. */
+  .modal.on .dialog-head .mobile-back,
+  .drawer.on .drawer-head .mobile-back,
+  .palette.on .palette-search .mobile-back{display:inline-flex}
+  .mobile-back{
+    min-width:82px;
+    min-height:48px;
+    flex-shrink:0;
+    padding:9px 10px;
+    border:1px solid rgba(110,209,220,.28);
+    border-radius:12px;
+    background:rgba(7,40,48,.96);
+    color:#effdff;
+    font-size:15px;
+    line-height:1.2;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    position:relative;
+    z-index:1;
+  }
+  .mobile-back:active,.ccv2-mobile-section-back:active{
+    background:#165363;
+  }
+}
+@media (max-width:570px){
+  /* The modal is its own scrolling viewport. Put a real safe-area header
+     in flow, sticky at zero, instead of a negative top offset. */
+  .modal.on .dialog{
+    box-sizing:border-box;
+    padding-top:0!important;
+    height:100dvh;
+    max-height:100dvh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .modal.on .dialog-head{
+    position:sticky;
+    top:0!important;
+    margin:0 -12px 12px!important;
+    padding:calc(env(safe-area-inset-top) + 12px) 12px 12px!important;
+    min-height:calc(env(safe-area-inset-top) + 72px);
+    align-items:center;
+    background:rgba(8,31,37,.98);
+    z-index:9;
+    box-sizing:border-box;
+    border-bottom:1px solid rgba(120,213,226,.2);
+    -webkit-backdrop-filter:blur(18px);
+    backdrop-filter:blur(18px);
+  }
+  .modal.on .dialog-head>div{min-width:0}
+  .modal.on .dialog-head h2{max-width:100%;overflow-wrap:anywhere}
+
+  .drawer{top:0!important;bottom:0!important;max-height:100dvh}
+  .drawer-head{
+    top:0!important;
+    min-height:calc(env(safe-area-inset-top) + 76px);
+    padding:calc(env(safe-area-inset-top) + 12px) 12px 12px!important;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    background:rgba(8,31,37,.98);
+    border-bottom:1px solid rgba(120,213,226,.2);
+    z-index:9;
+  }
+  .drawer-head>div{min-width:0}
+  .drawer-head h2{overflow-wrap:anywhere}
+
+  .palette.on{padding:0!important}
+  .palette-box{height:100dvh;max-height:100dvh}
+  .palette-search{
+    min-height:calc(env(safe-area-inset-top) + 72px);
+    padding:calc(env(safe-area-inset-top) + 12px) 12px 12px!important;
+    align-items:center;
+    background:rgba(8,31,37,.98);
+    border-bottom:1px solid rgba(120,213,226,.2);
+    z-index:9;
+  }
+  .palette-search input{min-width:0}
+
+  /* Productive tools modal (notifications, templates, settings). */
+  .p2-modal.on{
+    padding:0!important;
+    display:grid;
+    align-items:stretch;
+  }
+  .p2-dialog{
+    box-sizing:border-box;
+    width:100%;
+    max-width:none;
+    height:100dvh;
+    max-height:100dvh;
+    border:0;
+    border-radius:0;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .p2-head{
+    top:0;
+    min-height:calc(env(safe-area-inset-top) + 76px);
+    padding:calc(env(safe-area-inset-top) + 12px) 12px 12px;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    background:rgba(8,31,37,.98);
+    z-index:9;
+  }
+  .p2-head .mobile-back{display:inline-flex}
+  .p2-head>div{min-width:0}
+  .p2-head h2{overflow-wrap:anywhere}
+  .p2-head>.xbtn{display:none}
+
+  /* Canonical owner form, including the six-step client wizard.
+     It previously started 8px below the status bar with a nonsticky head. */
+  .client-manager-overlay-v9.on{
+    padding:0!important;
+    align-items:stretch;
+    justify-content:stretch;
+    overflow:hidden;
+  }
+  .client-manager-dialog-v9{
+    box-sizing:border-box;
+    width:100%;
+    max-width:none;
+    height:100dvh;
+    max-height:100dvh!important;
+    margin:0;
+    padding:0 14px calc(22px + env(safe-area-inset-bottom));
+    border:0;
+    border-radius:0;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .client-manager-head-v9{
+    position:sticky;
+    top:0;
+    z-index:9;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    align-items:center;
+    padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;
+    margin:0 -14px 16px;
+    background:rgba(8,31,37,.98);
+    border-bottom:1px solid rgba(120,213,226,.2);
+    gap:8px;
+  }
+  .client-manager-head-v9>div{min-width:0;grid-column:2}
+  .client-manager-head-v9 h2{font-size:22px;overflow-wrap:anywhere}
+  .client-manager-head-v9 p{font-size:12px}
+  .client-manager-head-v9 #clientManagerCloseV9{display:none}
+  .client-manager-head-v9 .ccv2-client-mobile-back{display:inline-flex;grid-column:1;grid-row:1}
+  .client-manager-form-v9{padding-bottom:22px}
+  .client-manager-footer-v9{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+
+  /* Keep fixed lower navigation visually above the home indicator. */
+  .side{padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+}
+@media (max-width:700px) and (min-width:571px){
+  .modal.on .dialog-head,.drawer-head,.p2-head,.palette-search{
+    padding-top:max(14px,calc(env(safe-area-inset-top) + 12px));
+  }
+  .client-manager-overlay-v9{padding-top:max(12px,env(safe-area-inset-top))}
+}

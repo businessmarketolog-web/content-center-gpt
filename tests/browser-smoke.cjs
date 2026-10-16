@@ -71,6 +71,35 @@ function mockSupabase(){
   storage:{from:()=>({getPublicUrl:()=>({data:{publicUrl:'https://invalid.example/fixture.png'}})})}};
  window.supabase={createClient:()=>client};
 }
+async function simulateEdgeSwipe(page,{x1=42,y1=260,x2=166,y2=268,target=null}={}){
+ return page.evaluate(async args=>{
+  const node=args.target?document.querySelector(args.target):document;
+  if(!node)throw Error('Missing swipe test target');
+  const start=new Event('touchstart',{bubbles:true});
+  Object.defineProperty(start,'touches',{value:[{clientX:args.x1,clientY:args.y1}]});
+  node.dispatchEvent(start);
+  await new Promise(resolve=>setTimeout(resolve,85));
+  const end=new Event('touchend',{bubbles:true});
+  Object.defineProperty(end,'changedTouches',{value:[{clientX:args.x2,clientY:args.y2}]});
+  node.dispatchEvent(end);
+  return {view:state.view,drawer:document.querySelector('#contentDrawer')?.classList.contains('on')};
+ },{x1,y1,x2,y2,target});
+}
+async function assertTouchableSafeBack(page,selector,label){
+ const data=await page.locator(selector).evaluate(el=>{
+  const rect=el.getBoundingClientRect();
+  const topInset=Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-top-test'))||0;
+  const hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);
+  return {top:rect.top,left:rect.left,width:rect.width,height:rect.height,
+    hit:el===hit||el.contains(hit),inset:topInset,visible:getComputedStyle(el).display!=='none',
+    topHit:hit?.tagName+'#'+(hit?.id||'')+'.'+(hit?.className||''),
+    hitStack:document.elementsFromPoint(rect.left+rect.width/2,rect.top+rect.height/2).slice(0,5).map(x=>x.tagName+'#'+(x.id||'')+'.'+(x.className||'')),
+    pointerEvents:getComputedStyle(el).pointerEvents,
+    zIndex:getComputedStyle(el).zIndex};
+ });
+ assert.ok(data.visible&&data.hit&&data.height>=44&&data.top>=data.inset,
+   label+' must be visible, clickable and below iPhone safe area: '+JSON.stringify(data));
+}
 async function main(){
  const app=server();await new Promise(resolve=>app.listen(0,'127.0.0.1',resolve));
  const url='http://127.0.0.1:'+app.address().port+'/?workspace=v2';
@@ -280,6 +309,83 @@ async function main(){
    await page.locator('#client').selectOption('11111111-1111-4111-8111-111111111111');
    await page.waitForFunction(id=>state.clientId===id,'11111111-1111-4111-8111-111111111111');
    assert.equal(await page.evaluate(title=>state.content.some(x=>x.title===title),materialTitle),false,'foreign client must not see newly created material');
+   if(kind==='mobile'){
+     assert.equal(await page.evaluate(()=>!!window.CCMobileNav),true,'mobile back controller installed');
+     // Main section: a normal left-edge swipe navigates one tab back.
+     await page.evaluate(()=>{show('dashboard');show('production');});
+     await page.locator('#ccv2MobileSectionBack').waitFor({state:'visible'});
+     await assertTouchableSafeBack(page,'#ccv2MobileSectionBack','section back');
+     await simulateEdgeSwipe(page,{x1:180,x2:340});
+     assert.equal(await page.evaluate(()=>state.view),'production','swiping from center must not navigate');
+     await simulateEdgeSwipe(page,{y1:250,y2:338});
+     assert.equal(await page.evaluate(()=>state.view),'production','vertical scroll must not trigger back');
+     await simulateEdgeSwipe(page,{target:'#paletteInput'});
+     assert.equal(await page.evaluate(()=>state.view),'production','text input touch must not trigger back');
+     await simulateEdgeSwipe(page);
+     assert.equal(await page.evaluate(()=>state.view),'dashboard','edge swipe returns to previous screen');
+     await page.evaluate(()=>show('production'));
+     await page.locator('#ccv2MobileSectionBack').click();
+     assert.equal(await page.evaluate(()=>state.view),'dashboard','visible back button returns to previous section');
+
+     // Card on top of a page must close first. A dirty draft needs approval.
+     await page.evaluate(id=>openDrawer(id),handoffId);
+     await page.waitForTimeout(540); // allow native drawer animation and swipe de-bounce
+     await assertTouchableSafeBack(page,'#contentDrawer .mobile-back','material editor back');
+     await page.locator('#dCaption').fill('Несохранённый тестовый текст');
+     page.once('dialog',dialog=>dialog.dismiss());
+     await simulateEdgeSwipe(page);
+     assert.equal(await page.locator('#contentDrawer.on').count(),1,'cancelled confirmation must preserve editor');
+     assert.equal(await page.locator('#dCaption').inputValue(),'Несохранённый тестовый текст');
+     page.once('dialog',dialog=>dialog.accept());
+     await page.locator('#contentDrawer .mobile-back').click();
+     assert.equal(await page.locator('#contentDrawer.on').count(),0,'confirmed editor back works by tap');
+
+     // Search opens full-screen and goes back by swipe, without losing current section.
+     await page.evaluate(()=>openPalette());
+     await assertTouchableSafeBack(page,'#palette .mobile-back','search back');
+     await page.waitForTimeout(520);
+     await simulateEdgeSwipe(page);
+     assert.equal(await page.locator('#palette.on').count(),0,'search closed by edge swipe');
+
+     // New content cannot be silently lost; cancelling the confirmation retains form.
+     await page.locator('#addBtn').click();
+     await assertTouchableSafeBack(page,'#contentModal .mobile-back','new material back');
+     await page.locator('#fTitle').fill('Новый несохранённый материал QA');
+     page.once('dialog',dialog=>dialog.dismiss());
+     await page.waitForTimeout(520);
+     await simulateEdgeSwipe(page);
+     assert.equal(await page.locator('#contentModal.on').count(),1);
+     assert.equal(await page.locator('#fTitle').inputValue(),'Новый несохранённый материал QA');
+     page.once('dialog',dialog=>dialog.accept());
+     await page.locator('#contentModal .mobile-back').click();
+     assert.equal(await page.locator('#contentModal.on').count(),0);
+
+     // A six-step owner profile swipes back ONE STEP, not out of the entire form.
+     await page.locator('#clientSettingsBtnV9').click();
+     await assertTouchableSafeBack(page,'#ccv2MobileClientBack','client settings back');
+     await page.locator('#clientManagerV9 button',{hasText:'Продолжить'}).click();
+     assert.match(await page.locator('#clientManagerV9 .ccv2-client-progress').innerText(),/Шаг 2 из 6/);
+     await page.waitForTimeout(520);
+     await simulateEdgeSwipe(page);
+     assert.match(await page.locator('#clientManagerV9 .ccv2-client-progress').innerText(),/Шаг 1 из 6/);
+     assert.equal(await page.locator('#clientManagerV9.on').count(),1);
+     await page.locator('#cm_name').fill('Не сохранять исправленное имя');
+     page.once('dialog',dialog=>dialog.dismiss());
+     await page.waitForTimeout(520);
+     await simulateEdgeSwipe(page);
+     assert.equal(await page.locator('#clientManagerV9.on').count(),1,'unsaved client profile remains open');
+     page.once('dialog',dialog=>dialog.accept());
+     await page.locator('#ccv2MobileClientBack').click();
+     assert.equal(await page.locator('#clientManagerV9.on').count(),0);
+
+     // Product-tools modal has its own sticky safe-area back header.
+     await page.evaluate(()=>openP2Modal('Проверка мобильного возврата','QA','<p>Тест</p>'));
+     await assertTouchableSafeBack(page,'#p2Modal .mobile-back','tool modal back');
+     await page.waitForTimeout(520);
+     await simulateEdgeSwipe(page);
+     assert.equal(await page.locator('#p2Modal.on').count(),0,'tool modal closed by edge swipe');
+     assert.equal(await page.evaluate(()=>state.view),'dashboard','background tab remains unchanged');
+   }
    assert.equal(errors.length,0,kind+' page errors: '+errors.join(' | '));
    outcomes.push(kind+': login stub, V2 workspace, 6-step client form, one owner RPC and no duplicate content OK');
    await context.close();
