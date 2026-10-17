@@ -33,13 +33,33 @@
     const label = document.createElement('div');
     label.className = 'cc-media-caption';
     const detail = (item.format === 'Reels')
-      ? 'Обложка Reels · видео проверяется отдельно'
+      ? (urls.some(function (url) { return /\.(?:mp4|webm)(?:[?#]|$)/i.test(url); }) ? 'Обложка и видеочерновик' : 'Обложка Reels · видео проверяется отдельно')
       : ('Карусель · ' + urls.length + ' изобр.');
     label.textContent = detail + ' · визуал на согласовании';
     wrapper.appendChild(label);
     const strip = document.createElement('div');
     strip.className = 'cc-media-strip';
     urls.forEach(function (url, i) {
+      const isVideo = /\.(?:mp4|webm|mov)(?:[?#]|$)/i.test(url);
+      if (isVideo) {
+        const holder = document.createElement('div');
+        holder.className = 'cc-media-thumb cc-media-thumb-video';
+        const player = document.createElement('video');
+        player.src = url;
+        player.controls = true; player.preload = 'metadata';
+        player.playsInline = true; player.muted = true;
+        player.setAttribute('aria-label', 'Видеочерновик ' + (item.title || ''));
+        const poster = urls.find(function (candidate) { return /\.(?:png|jpe?g|webp)(?:[?#]|$)/i.test(candidate); });
+        if (poster) player.poster = poster;
+        holder.appendChild(player);
+        const link = document.createElement('a');
+        link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+        link.className = 'cc-video-open';
+        link.textContent = 'Открыть MP4';
+        holder.appendChild(link);
+        strip.appendChild(holder);
+        return;
+      }
       const a = document.createElement('a');
       a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
       a.title = 'Открыть изображение ' + (i + 1) + ' в полном размере';
