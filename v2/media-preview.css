@@ -17,3 +17,9 @@
   .cc-media-block-drawer .cc-media-thumb { width: 126px; flex-basis: 126px; }
   .cc-media-caption { font-size: 11px; }
 }
+
+.cc-media-thumb-video { aspect-ratio:9/16; width:124px; flex-basis:124px; display:flex; flex-direction:column; background:#222; }
+.cc-media-thumb-video video { display:block; width:100%; height:calc(100% - 26px); object-fit:contain; background:#111; }
+.cc-media-thumb-video .cc-video-open { display:block; font-size:10px; line-height:24px; color:#fff; text-decoration:underline; text-align:center; }
+.cc-media-block-drawer .cc-media-thumb-video { width:230px; flex-basis:230px; }
+@media(max-width:640px){ .cc-media-thumb-video {width:118px;flex-basis:118px;} .cc-media-block-drawer .cc-media-thumb-video {width:168px;flex-basis:168px;} }
